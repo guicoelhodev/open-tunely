@@ -170,7 +170,7 @@ pub async fn refresh_music_library(app: tauri::AppHandle) -> Result<Option<Music
     .map_err(|_| "A atualização da biblioteca foi interrompida.".to_string())?
 }
 
-fn checked_track(folder: &Path, address: &str) -> Result<PathBuf, String> {
+pub(crate) fn checked_track(folder: &Path, address: &str) -> Result<PathBuf, String> {
     let path = PathBuf::from(address);
     if path.parent() != Some(folder)
         || !path

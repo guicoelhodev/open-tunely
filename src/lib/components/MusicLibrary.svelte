@@ -130,7 +130,6 @@
   function failed(event: Event) {
     if (event.currentTarget !== audio || !playbackUrl) return;
     playing = false;
-    console.warn("Falha na reprodução do MP3", { code: audio?.error?.code, message: audio?.error?.message });
     error = "O player do aplicativo não conseguiu reproduzir este MP3. Tente novamente ou selecione a pasta de novo.";
   }
 

@@ -11,6 +11,7 @@ use std::{
 };
 use tauri::Manager;
 
+mod audio_http;
 mod download;
 mod library;
 
@@ -426,10 +427,13 @@ pub fn run() {
     tauri::Builder::default()
         .manage(Arc::new(PreviewState::default()))
         .manage(library::LibraryState::default())
+        .manage(audio_http::AudioHttpState::default())
         .manage(Arc::new(download::DownloadState::default()))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
+            audio_http::local_audio_url,
+            audio_http::release_local_audio,
             search_song,
             reserve_preview,
             cancel_preview,
