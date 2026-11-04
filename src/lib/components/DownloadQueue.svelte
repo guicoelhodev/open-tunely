@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
+  import Popover from "./ui/Popover.svelte";
   import menuIcon from "@iconify-icons/andrsrxn/menu";
   import musicIcon from "@iconify-icons/andrsrxn/music-note";
   import retryIcon from "@iconify-icons/andrsrxn/reload";
@@ -40,62 +41,34 @@
 <svelte:window onkeydown={close} />
 
 {#if pending.length}
-  <div class="download-queue">
-    <div id="download-queue-panel" class="queue-panel" popover="auto" bind:this={panel} onbeforetoggle={positionPanel}>
-      <header><h3>Downloads</h3><span>{pending.length} na fila</span></header>
-      <ul aria-label="Fila de downloads">
+  <div class="mt-auto shrink-0 pt-3.5">
+    <Popover id="download-queue-panel" class="inset-[auto_24px_110px_auto] max-h-[min(440px,65dvh)] w-[min(350px,calc(100vw-48px))] overflow-y-auto rounded-[18px] p-3.5 shadow-[0_12px_40px_#17202a26]" bind:element={panel} onbeforetoggle={positionPanel}>
+      <header class="mb-3.5 flex items-center justify-between"><h3 class="text-[0.95rem] font-bold">Downloads</h3><span class="text-xs text-[#637184]">{pending.length} na fila</span></header>
+      <ul class="m-0 list-none p-0" aria-label="Fila de downloads">
         {#each $downloadQueue as item (item.key)}
-          <li class:failed={item.status === "error"}>
-            <div class="cover" aria-hidden="true"><Icon icon={musicIcon} width="22" /></div>
-            <div class="info">
-              <p class="title" title={item.title}>{item.title}</p>
-              <p class="status">{status(item)}</p>
+          <li class="mt-2 flex items-center gap-2.5 rounded-xl border p-2.5 {item.status === 'error' ? 'border-[#e6bcc0]' : 'border-[#d8dee7]'}">
+            <div class="flex h-10 w-[34px] shrink-0 items-center justify-center rounded-lg bg-[#f0f3f7] text-[#7d8a9d]" aria-hidden="true"><Icon icon={musicIcon} width="22" /></div>
+            <div class="min-w-0 flex-1">
+              <p class="mb-[5px] truncate text-[0.8rem] font-semibold" title={item.title}>{item.title}</p>
+              <p class="text-[0.7rem] text-[#637184]">{status(item)}</p>
               {#if item.status === "downloading" && item.percent !== null}
-                <progress value={item.percent} max="100" aria-label={`Progresso de ${item.title}`}></progress>
+                <progress class="h-[7px] w-full appearance-none overflow-hidden rounded-lg border-0 bg-[#e1e7f0] accent-[#eaa5ad] [&::-webkit-progress-bar]:rounded-lg [&::-webkit-progress-bar]:bg-[#e1e7f0] [&::-webkit-progress-value]:rounded-lg [&::-webkit-progress-value]:bg-[#eaa5ad]" value={item.percent} max="100" aria-label={`Progresso de ${item.title}`}></progress>
               {/if}
-              {#if item.error}<p class="error">{item.error}</p>{/if}
+              {#if item.error}<p class="mt-1.5 text-[0.7rem] leading-[1.4] text-[#a51e25] [overflow-wrap:anywhere]">{item.error}</p>{/if}
             </div>
             {#if item.status === "error"}
-              <div class="actions">
-                <button type="button" onclick={() => retryDownload(item.key)} aria-label={`Tentar baixar ${item.title} novamente`} title="Tentar novamente"><Icon icon={retryIcon} width="20" /></button>
-                <button type="button" onclick={() => removeDownload(item.key)} aria-label={`Remover ${item.title} da fila`} title="Remover da fila"><Icon icon={removeIcon} width="20" /></button>
+              <div class="flex flex-col gap-1">
+                <button class="flex cursor-pointer rounded-[7px] bg-[#f0f3f7] p-[5px] text-[#17202a] focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-[3px]" type="button" onclick={() => retryDownload(item.key)} aria-label={`Tentar baixar ${item.title} novamente`} title="Tentar novamente"><Icon icon={retryIcon} width="20" /></button>
+                <button class="flex cursor-pointer rounded-[7px] bg-[#f0f3f7] p-[5px] text-[#17202a] focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-[3px]" type="button" onclick={() => removeDownload(item.key)} aria-label={`Remover ${item.title} da fila`} title="Remover da fila"><Icon icon={removeIcon} width="20" /></button>
               </div>
             {/if}
           </li>
         {/each}
       </ul>
-    </div>
-    <button class="queue-trigger" type="button" popovertarget="download-queue-panel" bind:this={trigger}>
-      <span class="label">{errors === pending.length ? "Downloads com erro" : "Baixando músicas"}<small>{errors ? `${errors} com erro · ` : ""}{pending.length} na fila</small></span>
-      <span class="summary"><Icon icon={menuIcon} width="22" /><progress value={percent} max="100" aria-label="Progresso total dos downloads"></progress><span>{percent}%</span></span>
+    </Popover>
+    <button class="block w-full cursor-pointer rounded-[13px] border border-[#d8dee7] bg-[#f8faff] p-3 text-left text-[#17202a] hover:bg-[#edf3ff] focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-[3px]" type="button" popovertarget="download-queue-panel" bind:this={trigger}>
+      <span class="flex items-baseline justify-between gap-2 text-[0.85rem] font-semibold">{errors === pending.length ? "Downloads com erro" : "Baixando músicas"}<small class="text-[0.65rem] font-normal text-[#637184]">{errors ? `${errors} com erro · ` : ""}{pending.length} na fila</small></span>
+      <span class="mt-2.5 flex items-center gap-2.5 text-[0.8rem]"><Icon icon={menuIcon} width="22" /><progress class="h-[7px] w-full appearance-none overflow-hidden rounded-lg border-0 bg-[#e1e7f0] accent-[#eaa5ad] [&::-webkit-progress-bar]:rounded-lg [&::-webkit-progress-bar]:bg-[#e1e7f0] [&::-webkit-progress-value]:rounded-lg [&::-webkit-progress-value]:bg-[#eaa5ad]" value={percent} max="100" aria-label="Progresso total dos downloads"></progress><span>{percent}%</span></span>
     </button>
   </div>
 {/if}
-
-<style>
-  .download-queue { margin-top: auto; padding-top: 14px; flex-shrink: 0; }
-  button { font: inherit; cursor: pointer; color: #17202a; border: 0; }
-  button:focus-visible { outline: 3px solid #7aa7ff; outline-offset: 3px; }
-  .queue-trigger { display: block; width: 100%; padding: 12px; text-align: left; border: 1px solid #d8dee7; border-radius: 13px; background: #f8faff; }
-  .queue-trigger:hover { background: #edf3ff; }
-  .label { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: .85rem; font-weight: 600; }
-  small { color: #637184; font-size: .65rem; font-weight: 400; }
-  .summary { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: .8rem; }
-  progress { appearance: none; width: 100%; height: 7px; border: 0; border-radius: 8px; overflow: hidden; background: #e1e7f0; accent-color: #eaa5ad; }
-  progress::-webkit-progress-bar { background: #e1e7f0; border-radius: 8px; }
-  progress::-webkit-progress-value { background: #eaa5ad; border-radius: 8px; }
-  .queue-panel { position: fixed; inset: auto 24px 110px auto; margin: 0; width: min(350px, calc(100vw - 48px)); max-height: min(440px, 65dvh); padding: 14px; box-sizing: border-box; overflow-y: auto; border: 1px solid #d8dee7; border-radius: 18px; background: #fff; color: #17202a; box-shadow: 0 12px 40px #17202a26; }
-  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-  h3 { margin: 0; font-size: .95rem; }
-  header span { font-size: .75rem; color: #637184; }
-  ul { list-style: none; margin: 0; padding: 0; }
-  li { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #d8dee7; border-radius: 12px; margin-top: 8px; }
-  li.failed { border-color: #e6bcc0; }
-  .cover { display: flex; align-items: center; justify-content: center; width: 34px; height: 40px; flex-shrink: 0; background: #f0f3f7; color: #7d8a9d; border-radius: 8px; }
-  .info { flex: 1; min-width: 0; }
-  .title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .8rem; font-weight: 600; margin: 0 0 5px; }
-  .status { color: #637184; font-size: .7rem; margin: 0; }
-  .error { font-size: .7rem; line-height: 1.4; overflow-wrap: anywhere; color: #a51e25; margin: 6px 0 0; }
-  .actions { display: flex; flex-direction: column; gap: 4px; }
-  .actions button { display: flex; padding: 5px; background: #f0f3f7; border-radius: 7px; }
-</style>

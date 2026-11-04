@@ -139,38 +139,38 @@
   }
 </script>
 
-<aside aria-label="Biblioteca de músicas" class="library">
-  <header>
-    <div class="folder-info">
-      <h2>Minha biblioteca</h2>
-      <p class="folder-path" title={$library?.folder}>
+<aside aria-label="Biblioteca de músicas" class="flex h-[calc(100dvh-64px)] min-h-[440px] min-w-0 flex-col rounded-3xl border border-[#d8dee7] bg-white px-4 py-5 max-[720px]:h-[min(580px,75dvh)] max-[720px]:min-h-[340px]">
+  <header class="flex items-center gap-3 border-b border-[#edf0f5] px-1 pb-[18px]">
+    <div class="min-w-0 flex-1">
+      <h2 class="mb-2 text-base font-bold">Minha biblioteca</h2>
+      <p class="truncate font-mono text-[0.8rem] leading-normal text-[#536170]" title={$library?.folder}>
         {folderLabel}
       </p>
     </div>
-    <button class="folder-button" type="button" onclick={chooseFolder} disabled={$choosingFolder || $downloading}
+    <button class="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-[10px] bg-transparent p-0 text-[#1599c8] hover:bg-[#edf8fc] disabled:cursor-wait disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-[3px]" type="button" onclick={chooseFolder} disabled={$choosingFolder || $downloading}
       aria-label="Selecionar pasta de músicas" title="Selecionar pasta de músicas">
       <Icon icon={folderIcon} width="26" />
     </button>
   </header>
 
-  <div class="library-status" aria-live="polite" aria-busy={$choosingFolder || !!preparing}>
+  <div class="[&_p]:my-4 [&_p]:text-[0.85rem] [&_p]:leading-normal" aria-live="polite" aria-busy={$choosingFolder || !!preparing}>
     {#if $choosingFolder}<p>Carregando pasta…</p>{/if}
-    {#if error}<p class="error" role="alert">{error}</p>{/if}
-    {#if $downloadNotice}<p class="error" role="alert">{$downloadNotice}</p>{/if}
+    {#if error}<p class="text-[#a51e25]" role="alert">{error}</p>{/if}
+    {#if $downloadNotice}<p class="text-[#a51e25]" role="alert">{$downloadNotice}</p>{/if}
   </div>
 
   {#if $library}
-    <p class="track-count">{$library.tracks.length} {$library.tracks.length === 1 ? "música" : "músicas"}</p>
+    <p class="mx-1 mt-[18px] mb-3 text-xs text-[#637184]">{$library.tracks.length} {$library.tracks.length === 1 ? "música" : "músicas"}</p>
     {#if $library.tracks.length}
-      <ul onscroll={() => trackActions?.dismiss()}>
+      <ul class="-mx-1 min-h-0 flex-1 list-none overflow-y-auto px-1 pt-0.5 pb-2" onscroll={() => trackActions?.dismiss()}>
         {#each $library.tracks as track (track.path)}
-          <li class:active={active?.path === track.path} oncontextmenu={(event) => trackActions.open(event, track)}>
-            <div class="cover" aria-hidden="true"><Icon icon={musicIcon} width="24" /></div>
-            <div class="track-info">
-              <h3 title={track.filename}>{track.title}</h3>
-              <p>MP3 <span aria-hidden="true">·</span> {fileSize(track.size)}</p>
+          <li class="mb-2.5 flex items-center gap-2.5 rounded-[13px] border p-2.5 {active?.path === track.path ? 'border-[#7aa7ff] bg-[#f5f8ff]' : 'border-[#d8dee7]'}" oncontextmenu={(event) => trackActions.open(event, track)}>
+            <div class="flex h-[46px] w-[42px] shrink-0 items-center justify-center rounded-[10px] bg-[#f0f3f7] text-[#7d8a9d]" aria-hidden="true"><Icon icon={musicIcon} width="24" /></div>
+            <div class="min-w-0 flex-1">
+              <h3 class="mb-1.5 truncate text-sm font-semibold" title={track.filename}>{track.title}</h3>
+              <p class="text-xs text-[#637184]">MP3 <span aria-hidden="true">·</span> {fileSize(track.size)}</p>
             </div>
-            <button class="play-button" type="button" onclick={() => toggle(track)}
+            <button class="inline-flex h-9 w-[34px] shrink-0 cursor-pointer items-center justify-center rounded-[10px] bg-transparent p-0 text-[#1599c8] hover:bg-[#edf8fc] disabled:cursor-wait disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-[3px]" type="button" onclick={() => toggle(track)}
               onkeydown={(event) => { if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) void trackActions.open(event, track); }}
               disabled={preparing === track.path}
               aria-label={`${active?.path === track.path && playing ? "Pausar" : "Ouvir"} ${track.title}`}
@@ -181,25 +181,25 @@
         {/each}
       </ul>
     {:else}
-      <div class="empty-state">
+      <div class="flex flex-1 flex-col items-center justify-center gap-3 px-3 py-8 text-center text-[#637184]">
         <Icon icon={musicIcon} width="32" />
-        <p>Nenhum arquivo MP3 nesta pasta.</p>
-        <span>Escolha outra pasta pelo ícone acima.</span>
+        <p class="text-[0.9rem] text-[#34445a]">Nenhum arquivo MP3 nesta pasta.</p>
+        <span class="max-w-[230px] text-[0.8rem] leading-[1.6]">Escolha outra pasta pelo ícone acima.</span>
       </div>
     {/if}
   {:else if !$choosingFolder}
-    <div class="empty-state">
+    <div class="flex flex-1 flex-col items-center justify-center gap-3 px-3 py-8 text-center text-[#637184]">
       <Icon icon={folderIcon} width="36" />
-      <p>Suas músicas, por aqui.</p>
-      <span>Selecione uma pasta para listar e ouvir seus arquivos MP3.</span>
+      <p class="text-[0.9rem] text-[#34445a]">Suas músicas, por aqui.</p>
+      <span class="max-w-[230px] text-[0.8rem] leading-[1.6]">Selecione uma pasta para listar e ouvir seus arquivos MP3.</span>
     </div>
   {/if}
 
   {#if active && playbackUrl}
-    <div class="local-player">
-      <p title={active.title}>Tocando: {active.title}</p>
+    <div class="mt-auto border-t border-[#edf0f5] pt-3.5">
+      <p class="my-3 truncate text-xs text-[#536170]" title={active.title}>Tocando: {active.title}</p>
       {#key playbackUrl}
-        <audio bind:this={audio} src={playbackUrl} controls preload="metadata"
+        <audio class="h-9 w-full" bind:this={audio} src={playbackUrl} controls preload="metadata"
           aria-label={`Reproduzir ${active.title}`} onplay={started} onpause={paused}
           onended={paused} onerror={failed}>
           <track kind="captions" />
@@ -210,35 +210,3 @@
   <DownloadQueue />
   <TrackActions bind:this={trackActions} onbeforechange={(track) => { if (active?.path === track.path) stop(); }} onnotice={(message) => error = message} />
 </aside>
-
-<style>
-  .library { display: flex; flex-direction: column; min-width: 0; min-height: 440px; height: calc(100dvh - 64px); box-sizing: border-box; border: 1px solid #d8dee7; border-radius: 24px; background: #fff; padding: 20px 16px; }
-  header { display: flex; align-items: center; gap: 12px; padding: 0 4px 18px; border-bottom: 1px solid #edf0f5; }
-  .folder-info, .track-info { flex: 1; min-width: 0; }
-  h2 { margin: 0 0 8px; font-size: 1rem; }
-  .folder-path { margin: 0; font-family: ui-monospace, monospace; font-size: .8rem; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #536170; }
-  button { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 10px; background: #edf3ff; color: #2458d3; cursor: pointer; }
-  button:hover { background: #dce8ff; }
-  button:disabled { opacity: .5; cursor: wait; }
-  button:focus-visible { outline: 3px solid #7aa7ff; outline-offset: 3px; }
-  .folder-button { background: transparent; color: #1599c8; }
-  .folder-button:hover { background: #edf8fc; }
-  .library-status p { font-size: .85rem; line-height: 1.5; }
-  .error { color: #a51e25; }
-  .track-count { margin: 18px 4px 12px; color: #637184; font-size: .75rem; }
-  ul { flex: 1; min-height: 0; overflow-y: auto; list-style: none; padding: 2px 4px 8px; margin: 0 -4px; }
-  li { display: flex; align-items: center; gap: 10px; border: 1px solid #d8dee7; border-radius: 13px; padding: 10px; margin-bottom: 10px; }
-  li.active { border-color: #7aa7ff; background: #f5f8ff; }
-  .cover { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 42px; height: 46px; border-radius: 10px; background: #f0f3f7; color: #7d8a9d; }
-  h3 { font-size: .875rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 0 6px; }
-  .track-info p { color: #637184; font-size: .75rem; margin: 0; }
-  .play-button { width: 34px; height: 36px; background: transparent; color: #1599c8; }
-  .play-button:hover { background: #edf8fc; }
-  .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; color: #637184; padding: 32px 12px; }
-  .empty-state p { margin: 0; color: #34445a; font-size: .9rem; }
-  .empty-state span { max-width: 230px; line-height: 1.6; font-size: .8rem; }
-  .local-player { margin-top: auto; padding-top: 14px; border-top: 1px solid #edf0f5; }
-  .local-player p { font-size: .75rem; color: #536170; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  audio { width: 100%; height: 36px; }
-  @media (max-width: 720px) { .library { height: min(580px, 75dvh); min-height: 340px; } }
-</style>

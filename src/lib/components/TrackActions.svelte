@@ -1,5 +1,7 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
+  import Popover from "./ui/Popover.svelte";
+  import Modal from "./ui/Modal.svelte";
   import trashIcon from "@iconify-icons/andrsrxn/trash";
   import editIcon from "@iconify-icons/andrsrxn/pencil";
   import { library, renameMusicTrack, deleteMusicTrack, refreshMusicLibrary, type Track } from "$lib/services/library.service";
@@ -9,8 +11,8 @@
     onbeforechange: (track: Track) => void;
     onnotice: (message: string) => void;
   } = $props();
-  let menu: HTMLDivElement;
-  let dialog: HTMLDialogElement;
+  let menu = $state<HTMLDivElement>(undefined!);
+  let dialog = $state<HTMLDialogElement>(undefined!);
   let input = $state<HTMLInputElement>();
   let selected = $state<Track | null>(null);
   let action = $state<"rename" | "delete">("rename");
@@ -105,51 +107,27 @@
 
 <svelte:window onresize={closeMenu} onblur={closeMenu} onpointerdown={outsidePointer} onkeydown={escapeMenu} />
 
-<div class="track-menu" class:keyboard-focus={keyboardFocus} bind:this={menu} popover="manual" role="menu" tabindex="-1" aria-label="Ações da música" onkeydown={menuKeys} onpointerdown={() => keyboardFocus = false}>
-  <button type="button" role="menuitem" onclick={() => edit("rename")}><Icon icon={editIcon} width="16" />Renomear</button>
-  <button class="delete" type="button" role="menuitem" onclick={() => edit("delete")}><Icon icon={trashIcon} width="16" />Excluir</button>
-</div>
+<Popover class="inset-auto w-[min(144px,calc(100vw-32px))] rounded-[9px] p-1 shadow-[0_8px_28px_#17202a26] {keyboardFocus ? '' : 'outline-none [&_button]:outline-none'}" bind:element={menu} popover="manual" role="menu" tabindex={-1} aria-label="Ações da música" onkeydown={menuKeys} onpointerdown={() => keyboardFocus = false}>
+  <button class="flex cursor-pointer items-center bg-transparent text-[#34445a] hover:bg-[#edf3ff] focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50 w-full gap-2 rounded-md px-[9px] py-[7px] text-left text-[0.8rem]" type="button" role="menuitem" onclick={() => edit("rename")}><Icon icon={editIcon} width="16" />Renomear</button>
+  <button class="flex cursor-pointer items-center focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50 w-full gap-2 rounded-md px-[9px] py-[7px] text-left text-[0.8rem] mt-0.5 bg-[#fcebed] text-[#a51e25] hover:bg-[#f8dce0]" type="button" role="menuitem" onclick={() => edit("delete")}><Icon icon={trashIcon} width="16" />Excluir</button>
+</Popover>
 
-<dialog bind:this={dialog} oncancel={(event) => { if (busy) event.preventDefault(); }} onclose={() => origin?.focus()} aria-labelledby="track-action-title">
+<Modal bind:element={dialog} oncancel={(event) => { if (busy) event.preventDefault(); }} onclose={() => origin?.focus()} aria-labelledby="track-action-title">
   <form onsubmit={submit}>
-    <h3 id="track-action-title">{action === "rename" ? "Renomear música" : "Excluir música"}</h3>
+    <h3 class="mb-5 text-base font-bold" id="track-action-title">{action === "rename" ? "Renomear música" : "Excluir música"}</h3>
     {#if action === "rename"}
-      <label for="track-name">Nome da música</label>
-      <input bind:this={input} id="track-name" bind:value={name} required maxlength="240" disabled={busy} />
-      <p>A extensão .mp3 será mantida.</p>
+      <label class="mb-2 block text-[0.85rem]" for="track-name">Nome da música</label>
+      <input class="w-full rounded-lg border border-[#8b949e] p-2.5 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-2" bind:this={input} id="track-name" bind:value={name} required maxlength="240" disabled={busy} />
+      <p class="my-4 text-[0.85rem] leading-[1.6] [overflow-wrap:anywhere]">A extensão .mp3 será mantida.</p>
     {:else}
-      <p>Excluir “{selected?.title}” da pasta? O arquivo será apagado permanentemente.</p>
+      <p class="my-4 text-[0.85rem] leading-[1.6] [overflow-wrap:anywhere]">Excluir “{selected?.title}” da pasta? O arquivo será apagado permanentemente.</p>
     {/if}
-    {#if error}<p class="error" role="alert">{error}</p>{/if}
-    <div class="dialog-actions">
-      <button type="button" onclick={cancel} disabled={busy}>Cancelar</button>
-      <button class:delete={action === "delete"} class:save={action === "rename"} type="submit" disabled={busy || (action === "rename" && !name.trim())}>
+    {#if error}<p class="my-4 text-[0.85rem] leading-[1.6] text-[#a51e25] [overflow-wrap:anywhere]" role="alert">{error}</p>{/if}
+    <div class="mt-5 flex justify-end gap-2">
+      <button class="flex cursor-pointer items-center gap-2.5 rounded-lg bg-transparent px-3 py-2.5 text-[#34445a] hover:bg-[#edf3ff] focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50" type="button" onclick={cancel} disabled={busy}>Cancelar</button>
+      <button class="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50 {action === 'delete' ? 'bg-[#fcebed] text-[#a51e25] hover:bg-[#f8dce0]' : 'bg-[#2458d3] text-white hover:bg-[#1946b1]'}" type="submit" disabled={busy || (action === "rename" && !name.trim())}>
         {busy ? "Aguarde…" : action === "rename" ? "Salvar" : "Excluir"}
       </button>
     </div>
   </form>
-</dialog>
-
-<style>
-  button, input { font: inherit; }
-  button { display: flex; align-items: center; gap: 10px; border: 0; border-radius: 8px; padding: 10px 12px; background: transparent; color: #34445a; cursor: pointer; }
-  button:hover { background: #edf3ff; }
-  button:focus-visible, input:focus-visible { outline: 3px solid #7aa7ff; outline-offset: 2px; }
-  button:disabled { opacity: .5; cursor: wait; }
-  .track-menu { position: fixed; inset: auto; margin: 0; width: min(144px, calc(100vw - 32px)); padding: 4px; box-sizing: border-box; border: 1px solid #d8dee7; border-radius: 9px; background: white; box-shadow: 0 8px 28px #17202a26; }
-  .track-menu button { width: 100%; text-align: left; gap: 8px; padding: 7px 9px; border-radius: 6px; font-size: .8rem; }
-  .track-menu:not(.keyboard-focus), .track-menu:not(.keyboard-focus) button { outline: none; }
-  .track-menu button + button { margin-top: 2px; }
-  .delete { color: #a51e25; background: #fcebed; }
-  .delete:hover { background: #f8dce0; }
-  dialog { width: min(360px, calc(100vw - 64px)); border: 1px solid #d8dee7; border-radius: 16px; padding: 24px; color: #17202a; }
-  dialog::backdrop { background: #17202a55; }
-  h3 { margin: 0 0 20px; font-size: 1rem; }
-  label { display: block; margin-bottom: 8px; font-size: .85rem; }
-  input { box-sizing: border-box; width: 100%; border: 1px solid #8b949e; border-radius: 8px; padding: 10px; }
-  p { font-size: .85rem; line-height: 1.6; overflow-wrap: anywhere; }
-  .error { color: #a51e25; }
-  .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
-  .save { background: #2458d3; color: white; }
-  .save:hover { background: #1946b1; }
-</style>
+</Modal>
