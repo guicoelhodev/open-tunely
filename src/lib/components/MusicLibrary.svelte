@@ -1,5 +1,6 @@
 <script lang="ts">
   import DownloadQueue from "./DownloadQueue.svelte";
+  import TrackActions from "./TrackActions.svelte";
   import Icon from "@iconify/svelte";
   import folderIcon from "@iconify-icons/andrsrxn/folder-in";
   import playIcon from "@iconify-icons/andrsrxn/play";
@@ -17,6 +18,7 @@
     return `${parts.length > 2 ? ".../" : ""}${parts.slice(-2).join("/")}`;
   });
   let error = $state("");
+  let trackActions: TrackActions;
   let active = $state<Track | null>(null);
   let playing = $state(false);
   let audio = $state<HTMLAudioElement>();
@@ -153,7 +155,6 @@
 
   <div class="library-status" aria-live="polite" aria-busy={$choosingFolder || !!preparing}>
     {#if $choosingFolder}<p>Carregando pasta…</p>{/if}
-    {#if preparing}<p>Carregando MP3…</p>{/if}
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     {#if $downloadNotice}<p class="error" role="alert">{$downloadNotice}</p>{/if}
   </div>
@@ -161,15 +162,16 @@
   {#if $library}
     <p class="track-count">{$library.tracks.length} {$library.tracks.length === 1 ? "música" : "músicas"}</p>
     {#if $library.tracks.length}
-      <ul>
+      <ul onscroll={() => trackActions?.dismiss()}>
         {#each $library.tracks as track (track.path)}
-          <li class:active={active?.path === track.path}>
+          <li class:active={active?.path === track.path} oncontextmenu={(event) => trackActions.open(event, track)}>
             <div class="cover" aria-hidden="true"><Icon icon={musicIcon} width="24" /></div>
             <div class="track-info">
               <h3 title={track.filename}>{track.title}</h3>
               <p>MP3 <span aria-hidden="true">·</span> {fileSize(track.size)}</p>
             </div>
             <button class="play-button" type="button" onclick={() => toggle(track)}
+              onkeydown={(event) => { if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) void trackActions.open(event, track); }}
               disabled={preparing === track.path}
               aria-label={`${active?.path === track.path && playing ? "Pausar" : "Ouvir"} ${track.title}`}
               title={active?.path === track.path && playing ? "Pausar" : "Ouvir"}>
@@ -206,6 +208,7 @@
     </div>
   {/if}
   <DownloadQueue />
+  <TrackActions bind:this={trackActions} onbeforechange={(track) => { if (active?.path === track.path) stop(); }} onnotice={(message) => error = message} />
 </aside>
 
 <style>

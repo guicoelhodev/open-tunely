@@ -436,6 +436,8 @@ pub fn run() {
             preview_song,
             library::choose_music_folder,
             library::refresh_music_library,
+            library::rename_music_track,
+            library::delete_music_track,
             download::download_song
         ])
         .run(tauri::generate_context!())

@@ -48,3 +48,13 @@ export async function refreshMusicLibrary() {
   const refreshed = await invoke<Library | null>("refresh_music_library");
   if (current === revision && !selection) currentLibrary.set(refreshed);
 }
+
+export async function renameMusicTrack(track: Track, name: string) {
+  requireDesktop();
+  await invoke("rename_music_track", { path: track.path, name });
+}
+
+export async function deleteMusicTrack(track: Track) {
+  requireDesktop();
+  await invoke("delete_music_track", { path: track.path });
+}

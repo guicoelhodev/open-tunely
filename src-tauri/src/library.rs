@@ -170,9 +170,191 @@ pub async fn refresh_music_library(app: tauri::AppHandle) -> Result<Option<Music
     .map_err(|_| "A atualização da biblioteca foi interrompida.".to_string())?
 }
 
+fn checked_track(folder: &Path, address: &str) -> Result<PathBuf, String> {
+    let path = PathBuf::from(address);
+    if path.parent() != Some(folder)
+        || !path
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("mp3"))
+        || !std::fs::symlink_metadata(&path).is_ok_and(|meta| meta.file_type().is_file())
+    {
+        return Err("O MP3 não está mais disponível na pasta selecionada.".into());
+    }
+    Ok(path)
+}
+
+fn renamed_path(path: &Path, name: &str) -> Result<PathBuf, String> {
+    let name = name.trim();
+    let stem = if name.to_ascii_lowercase().ends_with(".mp3") {
+        &name[..name.len() - 4]
+    } else {
+        name
+    };
+    if stem.is_empty()
+        || stem == "."
+        || stem == ".."
+        || stem.len() > 240
+        || stem
+            .chars()
+            .any(|c| c.is_control() || "/\\:*?\"<>|".contains(c))
+        || stem.ends_with([' ', '.'])
+    {
+        return Err(
+            "Informe um nome válido, sem barras ou caracteres especiais de arquivo.".into(),
+        );
+    }
+    Ok(path.with_file_name(format!("{stem}.mp3")))
+}
+
+fn rename_track_file(path: &Path, destination: &Path) -> Result<(), String> {
+    if path == destination {
+        return Ok(());
+    }
+    // Atomic no-replace rename: an existing song must never be overwritten.
+    #[cfg(target_os = "linux")]
+    let result = {
+        use std::os::unix::ffi::OsStrExt;
+        let from =
+            std::ffi::CString::new(path.as_os_str().as_bytes()).map_err(|_| "Caminho inválido.")?;
+        let to = std::ffi::CString::new(destination.as_os_str().as_bytes())
+            .map_err(|_| "Caminho inválido.")?;
+        // SAFETY: both C strings stay alive throughout the call and contain no NUL bytes.
+        let code = unsafe {
+            libc::renameat2(
+                libc::AT_FDCWD,
+                from.as_ptr(),
+                libc::AT_FDCWD,
+                to.as_ptr(),
+                libc::RENAME_NOREPLACE,
+            )
+        };
+        if code == 0 {
+            Ok(())
+        } else {
+            Err(std::io::Error::last_os_error())
+        }
+    };
+    #[cfg(target_os = "windows")]
+    let result = std::fs::rename(path, destination);
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+    let result: std::io::Result<()> = Err(std::io::ErrorKind::Unsupported.into());
+    result.map_err(|error| {
+        if error.kind() == std::io::ErrorKind::AlreadyExists {
+            "Já existe um arquivo com esse nome. Escolha outro nome.".into()
+        } else {
+            "Não foi possível renomear o MP3. Verifique as permissões da pasta.".into()
+        }
+    })
+}
+
+#[tauri::command]
+pub async fn rename_music_track(
+    app: tauri::AppHandle,
+    path: String,
+    name: String,
+) -> Result<(), String> {
+    let folder = selected_folder(&app)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = checked_track(&folder, &path)?;
+        let destination = renamed_path(&path, &name)?;
+        rename_track_file(&path, &destination)
+    })
+    .await
+    .map_err(|_| "A alteração do nome foi interrompida.".to_string())?
+}
+
+#[tauri::command]
+pub async fn delete_music_track(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    let folder = selected_folder(&app)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = checked_track(&folder, &path)?;
+        std::fs::remove_file(path).map_err(|_| {
+            "Não foi possível excluir o MP3. Verifique as permissões da pasta.".to_string()
+        })
+    })
+    .await
+    .map_err(|_| "A exclusão foi interrompida.".to_string())?
+}
+
 #[cfg(test)]
 mod tests {
-    use super::scan_folder;
+    use super::{checked_track, rename_track_file, renamed_path, scan_folder};
+
+    #[test]
+    fn mutations_only_accept_direct_regular_mp3_files() {
+        let folder = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        let track = folder.path().join("song.mp3");
+        std::fs::write(&track, b"song").unwrap();
+        assert_eq!(
+            checked_track(folder.path(), track.to_str().unwrap()).unwrap(),
+            track
+        );
+        for filename in ["other.wav", "directory.mp3"] {
+            let path = folder.path().join(filename);
+            if filename.ends_with("wav") {
+                std::fs::write(&path, b"wave").unwrap();
+            } else {
+                std::fs::create_dir(&path).unwrap();
+            }
+            assert!(checked_track(folder.path(), path.to_str().unwrap()).is_err());
+        }
+        let external = outside.path().join("song.mp3");
+        std::fs::write(&external, b"external").unwrap();
+        assert!(checked_track(folder.path(), external.to_str().unwrap()).is_err());
+        #[cfg(unix)]
+        {
+            let link = folder.path().join("link.mp3");
+            std::os::unix::fs::symlink(&external, &link).unwrap();
+            assert!(checked_track(folder.path(), link.to_str().unwrap()).is_err());
+        }
+    }
+
+    #[test]
+    fn rename_validates_names_and_preserves_mp3_extension() {
+        let path = Path::new("/library/song.mp3");
+        for name in [
+            "",
+            " ",
+            ".",
+            "..",
+            ".mp3",
+            "../escape",
+            "sub/song",
+            "sub\\song",
+            "bad\nname",
+            "trailing.",
+        ] {
+            assert!(renamed_path(path, name).is_err(), "{name:?}");
+        }
+        assert_eq!(
+            renamed_path(path, " Novo nome ").unwrap(),
+            Path::new("/library/Novo nome.mp3")
+        );
+        assert_eq!(
+            renamed_path(path, "Novo nome.MP3").unwrap(),
+            Path::new("/library/Novo nome.mp3")
+        );
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "windows"))]
+    #[test]
+    fn rename_never_overwrites_an_existing_file() {
+        let folder = tempfile::tempdir().unwrap();
+        let source = folder.path().join("source.mp3");
+        let destination = folder.path().join("destination.mp3");
+        std::fs::write(&source, b"source").unwrap();
+        std::fs::write(&destination, b"existing").unwrap();
+        assert!(rename_track_file(&source, &destination).is_err());
+        assert_eq!(std::fs::read(&source).unwrap(), b"source");
+        assert_eq!(std::fs::read(&destination).unwrap(), b"existing");
+        std::fs::remove_file(&destination).unwrap();
+        rename_track_file(&source, &destination).unwrap();
+        assert!(!source.exists());
+        assert_eq!(std::fs::read(destination).unwrap(), b"source");
+    }
+
+    use std::path::Path;
 
     #[test]
     fn lists_only_direct_mp3_files_sorted_and_keeps_original_paths() {
