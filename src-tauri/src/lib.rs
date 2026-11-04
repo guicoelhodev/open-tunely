@@ -251,6 +251,8 @@ fn run_ytdlp_process_with_progress(
 struct Song {
     id: String,
     title: String,
+    #[serde(default)]
+    channel: Option<String>,
 }
 
 fn search_with_ytdlp(binary: PathBuf, query: &str) -> Result<Song, String> {

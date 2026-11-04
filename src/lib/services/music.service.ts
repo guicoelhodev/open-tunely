@@ -1,6 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
-export type Song = { id: string; title: string };
+export type Song = { id: string; title: string; channel?: string | null };
 
 export function requireDesktop() {
   if (!isTauri()) throw new Error("Abra a janela desktop do aplicativo para usar esta função.");

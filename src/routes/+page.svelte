@@ -1,14 +1,15 @@
 <script lang="ts">
   import { searchSong, reservePreview, resolvePreview, cancelPreview, type Song } from "$lib/services/music.service";
   import { downloadSong, downloadQueue } from "$lib/services/download.service";
-  import { onDestroy, tick } from "svelte";
+  import { onDestroy } from "svelte";
   import Icon from "@iconify/svelte";
   import downloadIcon from "@iconify-icons/andrsrxn/download";
   import closeIcon from "@iconify-icons/andrsrxn/x";
   import searchIcon from "@iconify-icons/andrsrxn/search";
   import playIcon from "@iconify-icons/andrsrxn/play";
   import MusicLibrary from "$lib/components/MusicLibrary.svelte";
-  let localLibrary: { stop: () => void } | undefined = $state();
+  import Player from "$lib/components/Player.svelte";
+  import { player, playTrack } from "$lib/services/player.service";
   let downloadError = $state("");
   let destroyed = false;
   let query = $state("");
@@ -16,62 +17,21 @@
   let loading = $state(false);
   const songQueued = $derived(!!song && $downloadQueue.some((item) => item.id === song?.id && item.status !== "completed"));
   let error = $state("");
-  let previewUrl = $state("");
-  let previewLoading = $state(false);
-  let previewError = $state("");
-  let audio: HTMLAudioElement | undefined = $state();
-  let previewRequest = 0;
-  let previewTicket: number | undefined;
-
-  function resetPreview() {
-    previewRequest += 1;
-    if (previewTicket !== undefined) cancelPreview(previewTicket);
-    previewTicket = undefined;
-    audio?.pause();
-    audio?.removeAttribute("src");
-    audio?.load();
-    previewUrl = "";
-    previewLoading = false;
-    previewError = "";
-  }
-
-  onDestroy(() => {
-    destroyed = true;
-    resetPreview();
-  });
-
+  const previewLoading = $derived($player.loading && $player.track?.id === song?.id);
+  const previewUrl = $derived($player.track?.id === song?.id ? $player.url : "");
+  const previewError = $derived($player.track?.id === song?.id ? $player.error : "");
+  onDestroy(() => { destroyed = true; });
   async function preview() {
     if (!song || previewLoading) return;
-    localLibrary?.stop();
-    resetPreview();
-    const request = previewRequest;
-    const id = song.id;
-    previewLoading = true;
-    try {
+    const selected = song;
+    await playTrack({ id: selected.id, title: selected.title, subtitle: selected.channel ?? "YouTube", load: async (signal) => {
       const ticket = await reservePreview();
-      if (request !== previewRequest) {
-        cancelPreview(ticket);
-        return;
-      }
-      previewTicket = ticket;
-      const url = await resolvePreview(id, ticket);
-      if (request !== previewRequest) return;
-      previewUrl = url;
-      await tick();
-      if (request !== previewRequest) return;
-      previewLoading = false;
-      try {
-        await audio?.play();
-      } catch {
-        if (request === previewRequest && !previewError) {
-          previewError = "A reprodução não iniciou. Use os controles abaixo ou tente novamente.";
-        }
-      }
-    } catch (cause) {
-      if (request === previewRequest) previewError = String(cause);
-    } finally {
-      if (request === previewRequest) previewLoading = false;
-    }
+      const cancel = () => cancelPreview(ticket);
+      if (signal.aborted) { cancel(); signal.throwIfAborted(); }
+      signal.addEventListener("abort", cancel, { once: true });
+      try { signal.throwIfAborted(); return { url: await resolvePreview(selected.id, ticket), dispose: cancel }; }
+      finally { signal.removeEventListener("abort", cancel); }
+    } });
   }
 
   async function download() {
@@ -86,20 +46,14 @@
   }
 
   function closeResult() {
-    resetPreview();
     song = null;
     document.getElementById("song-query")?.focus();
-  }
-
-  function playbackFailed() {
-    previewError = "Não foi possível reproduzir o áudio. Clique em Tentar novamente para obter um novo endereço.";
   }
 
   async function search(event: SubmitEvent) {
     event.preventDefault();
     if (loading || !query.trim()) return;
     loading = true;
-    resetPreview();
     song = null;
     error = "";
     try {
@@ -113,7 +67,7 @@
 </script>
 
 <div class="mx-auto grid max-w-[1180px] grid-cols-[minmax(0,1fr)_330px] gap-8 px-6 py-8 max-[720px]:grid-cols-[minmax(0,1fr)] max-[720px]:gap-5 max-[720px]:px-4 max-[720px]:py-5">
-<main class="min-w-0 py-6 max-[720px]:pt-0">
+<main class="flex min-w-0 flex-col pt-6 max-[720px]:pt-0">
   <form onsubmit={search}>
     <label class="mb-2 block font-semibold" for="song-query">Música ou artista</label>
     <div class="flex flex-wrap gap-3">
@@ -141,7 +95,8 @@
             <Icon icon={closeIcon} width="20" />
           </button>
         </div>
-        <h2 class="text-[1.2rem] font-bold [overflow-wrap:anywhere]">{song.title}</h2>
+        <h2 title={song.title} class="text-[1.2rem] font-bold [overflow-wrap:anywhere]">{song.title}</h2>
+        <p class="mt-1 text-xs text-[#637184]">{song.channel ?? "YouTube"}</p>
         <div class="mt-5 mb-3 flex items-center gap-3">
           <button class="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-[#2458d3] px-3 py-2 text-sm text-white disabled:cursor-default disabled:opacity-60 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-[3px]" type="button" onclick={preview} disabled={previewLoading}>
             {#if previewLoading}
@@ -160,20 +115,13 @@
         <div aria-live="polite" aria-busy={previewLoading}>
           {#if previewError}<p class="my-4 leading-[1.6] text-[#a51e25]" role="alert">{previewError}</p>{/if}
         </div>
-        {#if previewUrl}
-          {#key previewUrl}
-            <audio class="mt-3 block w-full" bind:this={audio} src={previewUrl} controls preload="none"
-              aria-label={`Ouvir ${song.title}`} onerror={playbackFailed}>
-              <track kind="captions" />
-            </audio>
-          {/key}
-        {/if}
       </article>
     {/if}
   </div>
   <div aria-live="polite">
     {#if downloadError}<p class="my-4 leading-[1.6] text-[#a51e25]" role="alert">{downloadError}</p>{/if}
   </div>
+<Player />
 </main>
-<MusicLibrary bind:this={localLibrary} onplay={resetPreview} />
+<MusicLibrary />
 </div>
