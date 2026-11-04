@@ -1,11 +1,14 @@
 <script lang="ts">
-  import { invoke, isTauri } from "@tauri-apps/api/core";
+  import { searchSong, reservePreview, resolvePreview, cancelPreview, type Song } from "$lib/services/music.service";
+  import { downloadSong, downloading } from "$lib/services/download.service";
   import { onDestroy, tick } from "svelte";
   import Icon from "@iconify/svelte";
   import downloadIcon from "@iconify-icons/andrsrxn/download";
   import MusicLibrary from "$lib/components/MusicLibrary.svelte";
   let localLibrary: { stop: () => void } | undefined = $state();
-  type Song = { id: string; title: string };
+  let downloadMessage = $state("");
+  let downloadError = $state("");
+  let destroyed = false;
   let query = $state("");
   let song = $state<Song | null>(null);
   let loading = $state(false);
@@ -16,11 +19,6 @@
   let audio: HTMLAudioElement | undefined = $state();
   let previewRequest = 0;
   let previewTicket: number | undefined;
-
-  function cancelPreview(ticket: number) {
-    // A newer preview may already have superseded this ticket.
-    void invoke("cancel_preview", { ticket }).catch(() => {});
-  }
 
   function resetPreview() {
     previewRequest += 1;
@@ -35,6 +33,7 @@
   }
 
   onDestroy(() => {
+    destroyed = true;
     resetPreview();
   });
 
@@ -46,13 +45,13 @@
     const id = song.id;
     previewLoading = true;
     try {
-      const ticket = await invoke<number>("reserve_preview");
+      const ticket = await reservePreview();
       if (request !== previewRequest) {
         cancelPreview(ticket);
         return;
       }
       previewTicket = ticket;
-      const url = await invoke<string>("preview_song", { id, ticket });
+      const url = await resolvePreview(id, ticket);
       if (request !== previewRequest) return;
       previewUrl = url;
       await tick();
@@ -72,6 +71,21 @@
     }
   }
 
+  async function download() {
+    if (!song || $downloading) return;
+    const selected = song;
+    downloadMessage = "";
+    downloadError = "";
+    try {
+      const result = await downloadSong(selected.id);
+      if (destroyed || !result) return;
+      downloadMessage = `Salvo: ${result.path}`;
+      downloadError = result.libraryWarning ?? "";
+    } catch (cause) {
+      if (!destroyed) downloadError = String(cause);
+    }
+  }
+
   function playbackFailed() {
     previewError = "Não foi possível reproduzir o áudio. Clique em Tentar novamente para obter um novo endereço.";
   }
@@ -79,16 +93,12 @@
   async function search(event: SubmitEvent) {
     event.preventDefault();
     if (loading || !query.trim()) return;
-    if (!isTauri()) {
-      error = "Abra o aplicativo desktop para pesquisar. Inicie com npm run dev e use a janela do aplicativo.";
-      return;
-    }
     loading = true;
     resetPreview();
     song = null;
     error = "";
     try {
-      song = await invoke<Song>("search_song", { query });
+      song = await searchSong(query);
     } catch (cause) {
       error = String(cause);
     } finally {
@@ -124,8 +134,8 @@
           <button type="button" onclick={preview} disabled={previewLoading}>
             {previewLoading ? "Preparando áudio…" : previewError ? "Tentar novamente" : previewUrl ? "Atualizar áudio" : "Ouvir"}
           </button>
-          <button class="download-button" type="button" disabled
-            aria-label="Baixar música (em breve)" title="Download em breve">
+          <button class="download-button" type="button" onclick={download} disabled={$downloading}
+            aria-label={$downloading ? "Baixando música" : "Baixar música"} title="Baixar MP3">
             <Icon icon={downloadIcon} width="22" />
           </button>
         </div>
@@ -143,6 +153,11 @@
         {/if}
       </article>
     {/if}
+  </div>
+  <div aria-live="polite" aria-busy={$downloading}>
+    {#if $downloading}<p class="caption">Baixando e convertendo para MP3…</p>{/if}
+    {#if downloadMessage}<p class="download-status">{downloadMessage}</p>{/if}
+    {#if downloadError}<p class="error" role="alert">{downloadError}</p>{/if}
   </div>
 </main>
 <MusicLibrary bind:this={localLibrary} onplay={resetPreview} />
@@ -167,7 +182,7 @@
   h2 { margin: 0; font-size: 1.2rem; overflow-wrap: anywhere; }
   .song-actions { display: flex; align-items: center; gap: 12px; margin: 20px 0 12px; }
   .download-button { display: inline-flex; align-items: center; justify-content: center; background: #e8edf5; color: #536170; }
-  .download-button:disabled { cursor: not-allowed; }
+  .download-status { overflow-wrap: anywhere; }
   audio { display: block; width: 100%; margin-top: 12px; }
   .error { color: #a51e25; }
   @media (max-width: 720px) { .app-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 20px 16px; } main { padding-top: 0; } }

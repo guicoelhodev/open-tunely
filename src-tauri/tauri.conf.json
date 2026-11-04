@@ -33,7 +33,10 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "binaries/yt-dlp"
+      "binaries/yt-dlp",
+      "binaries/ffmpeg",
+      "binaries/ffprobe",
+      "binaries/ffmpeg-LICENSE.txt"
     ]
   }
 }

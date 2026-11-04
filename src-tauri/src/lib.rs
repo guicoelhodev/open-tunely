@@ -11,6 +11,7 @@ use std::{
 };
 use tauri::Manager;
 
+mod download;
 mod library;
 
 const PREVIEW_TIMEOUT: Duration = Duration::from_secs(45);
@@ -58,12 +59,12 @@ impl PreviewState {
 }
 
 // yt-dlp's standalone build may fork: stop its entire process group on Linux.
-struct PreviewChild {
+struct YtdlpChild {
     child: Child,
     reaped: bool,
 }
 
-impl Drop for PreviewChild {
+impl Drop for YtdlpChild {
     fn drop(&mut self) {
         if self.reaped {
             return;
@@ -106,7 +107,7 @@ fn read_available(pipe: &mut impl Read, output: &mut Vec<u8>) -> Result<bool, St
     Ok(false)
 }
 
-fn run_preview_process(
+fn run_ytdlp_process(
     command: &mut Command,
     cancelled: &AtomicBool,
     timeout: Duration,
@@ -123,7 +124,7 @@ fn run_preview_process(
         use std::os::unix::process::CommandExt;
         command.process_group(0);
     }
-    let mut child = PreviewChild {
+    let mut child = YtdlpChild {
         child: command
             .spawn()
             .map_err(|error| format!("Não foi possível executar o yt-dlp: {error}"))?,
@@ -152,9 +153,10 @@ fn run_preview_process(
                 return Err("A preparação do áudio foi cancelada.".into());
             }
             if started.elapsed() >= timeout {
-                return Err(
-                    "O áudio demorou mais de 45 segundos para responder. Tente novamente.".into(),
-                );
+                return Err(format!(
+                    "A operação demorou mais de {} segundos. Tente novamente.",
+                    timeout.as_secs()
+                ));
             }
             if !stdout_closed {
                 stdout_closed = read_available(&mut stdout_pipe, &mut stdout)?;
@@ -198,10 +200,10 @@ fn run_preview_process(
                 break Err("A preparação do áudio foi cancelada.".to_string());
             }
             if started.elapsed() >= timeout {
-                break Err(
-                    "O áudio demorou mais de 45 segundos para responder. Tente novamente."
-                        .to_string(),
-                );
+                break Err(format!(
+                    "A operação demorou mais de {} segundos. Tente novamente.",
+                    timeout.as_secs()
+                ));
             }
             match child.child.try_wait() {
                 Ok(Some(status)) => {
@@ -294,19 +296,25 @@ async fn search_song(app: tauri::AppHandle, query: String) -> Result<Song, Strin
 }
 
 fn tool_binary(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    private_tool(app, "yt-dlp")
+}
+
+fn private_tool(app: &tauri::AppHandle, name: &str) -> Result<PathBuf, String> {
     let binary = if cfg!(debug_assertions) {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("binaries/yt-dlp")
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("binaries")
+            .join(name)
     } else {
         app.path()
             .resource_dir()
             .map_err(|error| format!("Não foi possível localizar as ferramentas: {error}"))?
-            .join("binaries/yt-dlp")
+            .join("binaries")
+            .join(name)
     };
     if !binary.is_file() {
-        return Err(
-            "O yt-dlp do aplicativo não foi preparado. Execute npm run setup:tools no projeto."
-                .into(),
-        );
+        return Err(format!(
+            "O {name} do aplicativo não foi preparado. Execute npm run setup:tools no projeto."
+        ));
     }
     Ok(binary)
 }
@@ -352,7 +360,7 @@ fn preview_with_ytdlp(binary: PathBuf, id: &str, cancelled: &AtomicBool) -> Resu
             "--",
         ])
         .arg(format!("https://www.youtube.com/watch?v={id}"));
-    let output = run_preview_process(&mut command, cancelled, PREVIEW_TIMEOUT)?;
+    let output = run_ytdlp_process(&mut command, cancelled, PREVIEW_TIMEOUT)?;
     if !output.status.success() {
         eprintln!(
             "yt-dlp preview: {}",
@@ -404,6 +412,8 @@ async fn preview_song(
 pub fn run() {
     tauri::Builder::default()
         .manage(Arc::new(PreviewState::default()))
+        .manage(library::LibraryState::default())
+        .manage(Arc::new(download::DownloadState::default()))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
@@ -411,7 +421,9 @@ pub fn run() {
             reserve_preview,
             cancel_preview,
             preview_song,
-            library::choose_music_folder
+            library::choose_music_folder,
+            library::refresh_music_library,
+            download::download_song
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -439,7 +451,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn cancellation_interrupts_running_process() {
-        use super::{AtomicBool, Command, Duration, Instant, Ordering, run_preview_process};
+        use super::{AtomicBool, Command, Duration, Instant, Ordering, run_ytdlp_process};
         let cancelled = AtomicBool::new(false);
         let started = Instant::now();
         std::thread::scope(|scope| {
@@ -447,7 +459,7 @@ mod tests {
                 std::thread::sleep(Duration::from_millis(100));
                 cancelled.store(true, Ordering::SeqCst);
             });
-            let error = run_preview_process(
+            let error = run_ytdlp_process(
                 Command::new("sh").args(["-c", "sleep 30 & wait"]),
                 &cancelled,
                 Duration::from_secs(2),
@@ -461,9 +473,9 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn deadline_interrupts_process_with_inherited_pipes() {
-        use super::{AtomicBool, Command, Duration, Instant, run_preview_process};
+        use super::{AtomicBool, Command, Duration, Instant, run_ytdlp_process};
         let started = Instant::now();
-        let error = run_preview_process(
+        let error = run_ytdlp_process(
             Command::new("sh").args(["-c", "sleep 30 & wait"]),
             &AtomicBool::new(false),
             Duration::from_millis(100),
@@ -476,13 +488,13 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn deadline_still_applies_after_parent_exits_with_either_pipe_open() {
-        use super::{AtomicBool, Command, Duration, Instant, run_preview_process};
+        use super::{AtomicBool, Command, Duration, Instant, run_ytdlp_process};
         for script in [
             "sleep 5 2>/dev/null & exit 0",
             "sleep 5 >/dev/null & exit 0",
         ] {
             let started = Instant::now();
-            let result = run_preview_process(
+            let result = run_ytdlp_process(
                 Command::new("sh").args(["-c", script]),
                 &AtomicBool::new(false),
                 Duration::from_millis(100),
@@ -495,7 +507,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn cancellation_still_applies_after_parent_exits_with_pipes_open() {
-        use super::{AtomicBool, Command, Duration, Instant, Ordering, run_preview_process};
+        use super::{AtomicBool, Command, Duration, Instant, Ordering, run_ytdlp_process};
         let cancelled = AtomicBool::new(false);
         let started = Instant::now();
         std::thread::scope(|scope| {
@@ -503,7 +515,7 @@ mod tests {
                 std::thread::sleep(Duration::from_millis(100));
                 cancelled.store(true, Ordering::SeqCst);
             });
-            let result = run_preview_process(
+            let result = run_ytdlp_process(
                 Command::new("sh").args(["-c", "sleep 5 & exit 0"]),
                 &cancelled,
                 Duration::from_secs(2),
@@ -516,8 +528,8 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn collects_descendant_output_after_parent_exits_before_deadline() {
-        use super::{AtomicBool, Command, Duration, run_preview_process};
-        let output = run_preview_process(
+        use super::{AtomicBool, Command, Duration, run_ytdlp_process};
+        let output = run_ytdlp_process(
             Command::new("sh").args([
                 "-c",
                 "(sleep 0.1; printf audio; printf diagnostic >&2) & exit 0",
@@ -534,11 +546,11 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn stopped_child_is_reaped() {
-        use super::{Command, PreviewChild};
+        use super::{Command, YtdlpChild};
         use std::os::unix::process::CommandExt;
         let mut command = Command::new("sh");
         command.args(["-c", "exec sleep 30"]).process_group(0);
-        let child = PreviewChild {
+        let child = YtdlpChild {
             child: command.spawn().unwrap(),
             reaped: false,
         };
@@ -554,8 +566,8 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn reads_both_pipes_without_deadlock() {
-        use super::{AtomicBool, Command, Duration, run_preview_process};
-        let output = run_preview_process(
+        use super::{AtomicBool, Command, Duration, run_ytdlp_process};
+        let output = run_ytdlp_process(
             Command::new("sh").args([
                 "-c",
                 "head -c 131072 /dev/zero; head -c 131072 /dev/zero >&2",

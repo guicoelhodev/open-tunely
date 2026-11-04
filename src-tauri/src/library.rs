@@ -1,7 +1,13 @@
 use serde::Serialize;
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
+
+#[derive(Default)]
+pub struct LibraryState(pub Mutex<Option<PathBuf>>);
 
 #[derive(Debug, Serialize)]
 pub struct LocalTrack {
@@ -81,21 +87,53 @@ pub async fn choose_music_folder(app: tauri::AppHandle) -> Result<Option<MusicLi
         let folder = folder
             .canonicalize()
             .map_err(|_| "Não foi possível acessar a pasta selecionada.")?;
-        let tracks = scan_folder(&folder)?;
-        // Expose only the listed MP3 files, rather than granting the whole filesystem.
-        let scope = app.asset_protocol_scope();
-        for track in &tracks {
-            scope
-                .allow_file(&track.path)
-                .map_err(|_| "Não foi possível liberar a reprodução dos arquivos MP3.")?;
-        }
-        Ok(Some(MusicLibrary {
-            folder: folder.to_string_lossy().into_owned(),
-            tracks,
-        }))
+        let library = load_library(&app, &folder)?;
+        *app.state::<LibraryState>()
+            .0
+            .lock()
+            .map_err(|_| "Não foi possível guardar a pasta selecionada.")? = Some(folder);
+        Ok(Some(library))
     })
     .await
     .map_err(|_| "A seleção da pasta foi interrompida.".to_string())?
+}
+
+pub fn selected_folder(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    app.state::<LibraryState>()
+        .0
+        .lock()
+        .map_err(|_| "Não foi possível acessar a biblioteca.")?
+        .clone()
+        .ok_or_else(|| "Selecione uma pasta antes de baixar.".into())
+}
+
+fn load_library(app: &tauri::AppHandle, folder: &Path) -> Result<MusicLibrary, String> {
+    let tracks = scan_folder(folder)?;
+    let scope = app.asset_protocol_scope();
+    for track in &tracks {
+        scope
+            .allow_file(&track.path)
+            .map_err(|_| "Não foi possível liberar a reprodução dos arquivos MP3.")?;
+    }
+    Ok(MusicLibrary {
+        folder: folder.to_string_lossy().into_owned(),
+        tracks,
+    })
+}
+
+#[tauri::command]
+pub async fn refresh_music_library(app: tauri::AppHandle) -> Result<Option<MusicLibrary>, String> {
+    let folder = app
+        .state::<LibraryState>()
+        .0
+        .lock()
+        .map_err(|_| "Não foi possível acessar a biblioteca.")?
+        .clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        folder.map(|folder| load_library(&app, &folder)).transpose()
+    })
+    .await
+    .map_err(|_| "A atualização da biblioteca foi interrompida.".to_string())?
 }
 
 #[cfg(test)]

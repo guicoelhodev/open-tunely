@@ -1,41 +1,87 @@
 import { createHash } from "node:crypto";
-import { chmod, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { chmod, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
-// Official standalone Linux x64 build; no system Python or yt-dlp required.
-const version = "2026.10.26";
-const sha256 = "767ba9dce7052aa196f8b12652f433d76de128ba168966fa84b6394d5e6c6795";
 const directory = new URL("../src-tauri/binaries/", import.meta.url);
-const binary = new URL("yt-dlp", directory);
-const temporary = new URL("yt-dlp.part", directory);
 const digest = (data) => createHash("sha256").update(data).digest("hex");
+const execute = promisify(execFile);
+const ytVersion = "2026.10.26";
+const ytHash = "767ba9dce7052aa196f8b12652f433d76de128ba168966fa84b6394d5e6c6795";
+// Static Linux x64 build maintained by yt-dlp; pinned tag and archive SHA-256.
+const ffVersion = "autobuild-2026-11-03-20-37";
+const ffRoot = "ffmpeg-N-128383-g47f35c191c-linux64-gpl";
+const ffArchiveHash = "51cc2787958e5b2fdebdf45be629f69dcd06bf8ff156bda77d8759d95e90e493";
+const ffHashes = {
+  ffmpeg: "e2430c93fd8c781439b95a238665ab06205f1ce464c7681e7e9c3990331fb162",
+  ffprobe: "5de72581e365f5878f54bd257ba5728ef9da3da1a8d6522ed01af93447a8e35f",
+};
+
+async function verified(path, hash) {
+  try { return digest(await readFile(path)) === hash; }
+  catch (error) { if (error.code === "ENOENT") return false; throw error; }
+}
+
+async function download(url, hash) {
+  const response = await fetch(url, { signal: AbortSignal.timeout(180_000) });
+  if (!response.ok) throw new Error(`Download falhou: HTTP ${response.status}`);
+  const data = Buffer.from(await response.arrayBuffer());
+  if (digest(data) !== hash) throw new Error("Checksum da ferramenta não confere.");
+  return data;
+}
+
+async function setupYtdlp(work) {
+  const binary = new URL("yt-dlp", directory);
+  if (!await verified(binary, ytHash)) {
+    console.log(`Baixando yt-dlp ${ytVersion} para Linux x64…`);
+    const data = await download(`https://github.com/yt-dlp/yt-dlp/releases/download/${ytVersion}/yt-dlp_linux`, ytHash);
+    const temporary = `${work}/yt-dlp`;
+    await writeFile(temporary, data, { mode: 0o755 });
+    await chmod(temporary, 0o755);
+    await rename(temporary, binary);
+  }
+  await chmod(binary, 0o755);
+  console.log(`yt-dlp ${ytVersion} preparado.`);
+}
+
+async function setupFfmpeg(work) {
+  const valid = await Promise.all(Object.entries(ffHashes).map(([name, hash]) => verified(new URL(name, directory), hash)));
+  let hasLicense = false;
+  try { hasLicense = (await readFile(new URL("ffmpeg-LICENSE.txt", directory))).length > 0; }
+  catch (error) { if (error.code !== "ENOENT") throw error; }
+  if (!valid.every(Boolean) || !hasLicense) {
+    console.log(`Baixando FFmpeg/ffprobe ${ffVersion} para Linux x64…`);
+    const data = await download(`https://github.com/yt-dlp/FFmpeg-Builds/releases/download/${ffVersion}/${ffRoot}.tar.xz`, ffArchiveHash);
+    const archive = `${work}/ffmpeg.tar.xz`;
+    await writeFile(archive, data);
+    // tar/xz is needed only during development setup, never by the desktop app.
+    await execute("tar", ["-xJf", archive, "-C", work,
+      `${ffRoot}/bin/ffmpeg`, `${ffRoot}/bin/ffprobe`, `${ffRoot}/LICENSE.txt`]);
+    for (const [name, hash] of Object.entries(ffHashes)) {
+      const extracted = `${work}/${ffRoot}/bin/${name}`;
+      if (!await verified(extracted, hash)) throw new Error(`Checksum de ${name} não confere.`);
+      await chmod(extracted, 0o755);
+      await rename(extracted, new URL(name, directory));
+    }
+    await rename(`${work}/${ffRoot}/LICENSE.txt`, new URL("ffmpeg-LICENSE.txt", directory));
+  }
+  for (const name of Object.keys(ffHashes)) await chmod(new URL(name, directory), 0o755);
+  console.log(`FFmpeg/ffprobe ${ffVersion} preparados.`);
+}
 
 if (process.platform !== "linux" || process.arch !== "x64") {
   throw new Error("Por enquanto, as ferramentas estão disponíveis somente para Linux x64.");
 }
+let work;
 try {
-  let existing;
-  try { existing = await readFile(binary); }
-  catch (error) { if (error.code !== "ENOENT") throw error; }
-  if (existing && digest(existing) === sha256) {
-    await chmod(binary, 0o755);
-    console.log(`yt-dlp ${version} já está preparado.`);
-  } else {
-    console.log(`Baixando yt-dlp ${version} para Linux x64…`);
-    const response = await fetch(
-      `https://github.com/yt-dlp/yt-dlp/releases/download/${version}/yt-dlp_linux`,
-      { signal: AbortSignal.timeout(180_000) },
-    );
-    if (!response.ok) throw new Error(`Download falhou: HTTP ${response.status}`);
-    const data = Buffer.from(await response.arrayBuffer());
-    if (digest(data) !== sha256) throw new Error("Checksum do yt-dlp não confere.");
-    await mkdir(directory, { recursive: true });
-    await writeFile(temporary, data, { mode: 0o755 });
-    await chmod(temporary, 0o755);
-    await rename(temporary, binary);
-    console.log(`yt-dlp ${version} preparado.`);
-  }
+  await mkdir(directory, { recursive: true });
+  work = await mkdtemp(`${fileURLToPath(directory)}.setup-`);
+  await setupYtdlp(work);
+  await setupFfmpeg(work);
 } catch (error) {
-  await rm(temporary, { force: true });
-  console.error(`Não foi possível preparar o yt-dlp: ${error.message}`);
+  console.error(`Não foi possível preparar as ferramentas: ${error.message}`);
   process.exitCode = 1;
+} finally {
+  if (work) await rm(work, { recursive: true, force: true });
 }
