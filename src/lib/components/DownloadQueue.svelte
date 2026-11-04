@@ -57,7 +57,7 @@
               {#if item.error}<p class="mt-1.5 text-[0.7rem] leading-[1.4] text-[#a51e25] [overflow-wrap:anywhere]">{item.error}</p>{/if}
             </div>
             {#if item.status === "error"}
-              <div class="flex flex-col gap-1">
+              <div class="flex flex-col justify-evenly gap-1 self-stretch">
                 <button class="flex cursor-pointer rounded-[7px] bg-[#f0f3f7] p-[5px] text-[#17202a] focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-[3px]" type="button" onclick={() => retryDownload(item.key)} aria-label={`Tentar baixar ${item.title} novamente`} title="Tentar novamente"><Icon icon={retryIcon} width="20" /></button>
                 <button class="flex cursor-pointer rounded-[7px] bg-[#f0f3f7] p-[5px] text-[#17202a] focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-[3px]" type="button" onclick={() => removeDownload(item.key)} aria-label={`Remover ${item.title} da fila`} title="Remover da fila"><Icon icon={removeIcon} width="20" /></button>
               </div>
