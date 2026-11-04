@@ -5,6 +5,7 @@
   import Icon from "@iconify/svelte";
   import downloadIcon from "@iconify-icons/andrsrxn/download";
   import closeIcon from "@iconify-icons/andrsrxn/x";
+  import searchIcon from "@iconify-icons/andrsrxn/search";
   import MusicLibrary from "$lib/components/MusicLibrary.svelte";
   let localLibrary: { stop: () => void } | undefined = $state();
   let downloadError = $state("");
@@ -119,8 +120,9 @@
     <div class="search-row">
       <input id="song-query" type="search" bind:value={query}
         placeholder="Ex.: Djavan — Oceano" required maxlength="300" />
-      <button type="submit" disabled={loading || !query.trim()}>
-        {loading ? "Pesquisando…" : "Pesquisar"}
+      <button class="search-button" type="submit" disabled={loading || !query.trim()}
+        aria-label={loading ? "Pesquisando…" : "Pesquisar"} title="Pesquisar">
+        <Icon icon={searchIcon} width="32" height="32" />
       </button>
     </div>
   </form>
@@ -179,6 +181,7 @@
   form { margin-top: 32px; }
   label { display: block; margin-bottom: 8px; font-weight: 600; }
   .search-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .search-button { display: inline-flex; align-items: center; justify-content: center; padding: 8px 12px; }
   input, button { font: inherit; padding: 12px 16px; border-radius: 8px; }
   input { flex: 1; min-width: 180px; border: 1px solid #8b949e; background: white; }
   button { border: 0; background: #2458d3; color: white; cursor: pointer; }
