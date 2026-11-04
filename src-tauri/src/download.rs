@@ -17,7 +17,14 @@ fn download_command(binary: &Path, ffmpeg: &Path, work: &Path, id: &str) -> Comm
             "--no-plugin-dirs",
             "--no-js-runtimes",
             "--no-playlist",
-            "--no-progress",
+            "--newline",
+            "--progress",
+            "--progress-delta",
+            "0.25",
+            "--progress-template",
+            "download:QUEUE:%(progress._percent_str)s",
+            "--progress-template",
+            "postprocess:CONVERTING",
             "--no-continue",
             "--no-overwrites",
             "--socket-timeout",
@@ -82,20 +89,65 @@ fn publish_mp3(work: &Path, folder: &Path) -> Result<PathBuf, String> {
     Ok(destination)
 }
 
+#[derive(Clone, Debug, serde::Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadProgress {
+    percent: Option<f64>,
+    converting: bool,
+}
+
+#[derive(Default)]
+struct ProgressReader {
+    buffers: [Vec<u8>; 2],
+}
+
+impl ProgressReader {
+    fn feed(&mut self, bytes: &[u8], stderr: bool, report: &mut impl FnMut(DownloadProgress)) {
+        let buffer = &mut self.buffers[usize::from(stderr)];
+        for &byte in bytes {
+            if byte == b'\n' || byte == b'\r' {
+                let line = String::from_utf8_lossy(buffer);
+                if line.trim() == "CONVERTING" {
+                    report(DownloadProgress {
+                        percent: Some(100.0),
+                        converting: true,
+                    });
+                } else if let Some(percent) = line
+                    .trim()
+                    .strip_prefix("QUEUE:")
+                    .and_then(|value| value.trim().trim_end_matches('%').parse::<f64>().ok())
+                    .filter(|value| value.is_finite())
+                {
+                    report(DownloadProgress {
+                        percent: Some(percent.clamp(0.0, 100.0)),
+                        converting: false,
+                    });
+                }
+                buffer.clear();
+            } else if buffer.len() < 16_384 {
+                buffer.push(byte);
+            }
+        }
+    }
+}
+
 fn download_with_ytdlp(
     binary: &Path,
     ffmpeg: &Path,
     folder: &Path,
     id: &str,
+    mut progress: impl FnMut(DownloadProgress),
 ) -> Result<PathBuf, String> {
     let work = tempfile::Builder::new()
         .prefix(".downloader-")
         .tempdir_in(folder)
         .map_err(|_| "Não foi possível gravar na pasta. Verifique o espaço e as permissões.")?;
-    let output = super::run_ytdlp_process(
+    let mut reader = ProgressReader::default();
+    let output = super::run_ytdlp_process_with_progress(
         &mut download_command(binary, ffmpeg, work.path(), id),
         &AtomicBool::new(false),
         Duration::from_secs(600),
+        |bytes, stderr| reader.feed(bytes, stderr, &mut progress),
     )?;
     if !output.status.success() {
         eprintln!(
@@ -112,12 +164,13 @@ fn download_with_ytdlp(
 pub async fn download_song(
     app: tauri::AppHandle,
     id: String,
+    on_progress: tauri::ipc::Channel<DownloadProgress>,
     state: tauri::State<'_, Arc<DownloadState>>,
 ) -> Result<String, String> {
     if !super::valid_video_id(&id) {
         return Err("O identificador da música é inválido.".into());
     }
-    // Only native-picker-approved destinations are accepted, never frontend paths.
+    // Destinations come from native selection or the local development configuration.
     let folder = super::library::selected_folder(&app)?;
     let binary = super::tool_binary(&app)?;
     let ffmpeg = super::private_tool(&app, "ffmpeg")?;
@@ -128,8 +181,16 @@ pub async fn download_song(
             .0
             .try_lock()
             .map_err(|_| "Aguarde o download atual terminar.")?;
-        download_with_ytdlp(&binary, ffmpeg.parent().unwrap(), &folder, &id)
-            .map(|path| path.to_string_lossy().into_owned())
+        download_with_ytdlp(
+            &binary,
+            ffmpeg.parent().unwrap(),
+            &folder,
+            &id,
+            |progress| {
+                let _ = on_progress.send(progress);
+            },
+        )
+        .map(|path| path.to_string_lossy().into_owned())
     })
     .await
     .map_err(|_| "O download foi interrompido.".to_string())?
@@ -138,6 +199,55 @@ pub async fn download_song(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn progress_handles_split_lines_both_streams_and_invalid_values() {
+        let mut reader = ProgressReader::default();
+        let mut updates = Vec::new();
+        let mut report = |value| updates.push(value);
+        reader.feed(b"[info] ignored\nQUEUE: 2", false, &mut report);
+        reader.feed(b"QUEUE: N/A%\nQUEUE: NaN%\n", true, &mut report);
+        reader.feed(b"0.5%\nQUEUE:101%\nCONVERT", false, &mut report);
+        reader.feed(b"ING\n", false, &mut report);
+        assert_eq!(
+            updates,
+            vec![
+                DownloadProgress {
+                    percent: Some(20.5),
+                    converting: false
+                },
+                DownloadProgress {
+                    percent: Some(100.0),
+                    converting: false
+                },
+                DownloadProgress {
+                    percent: Some(100.0),
+                    converting: true
+                },
+            ]
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn reports_progress_before_the_process_exits() {
+        let mut command = Command::new("sh");
+        command.args(["-c", "printf '%s\\n' 'QUEUE:42%'; sleep 2"]);
+        let cancelled = AtomicBool::new(false);
+        let mut reader = ProgressReader::default();
+        let result = super::super::run_ytdlp_process_with_progress(
+            &mut command,
+            &cancelled,
+            Duration::from_secs(5),
+            |bytes, stderr| {
+                reader.feed(bytes, stderr, &mut |_| {
+                    // Cancelling from this callback proves it runs while the child is alive.
+                    cancelled.store(true, std::sync::atomic::Ordering::SeqCst);
+                })
+            },
+        );
+        assert!(result.unwrap_err().contains("cancelada"));
+    }
 
     #[cfg(unix)]
     #[test]
@@ -155,7 +265,8 @@ mod tests {
         ] {
             std::fs::write(&binary, script).unwrap();
             std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o755)).unwrap();
-            let result = download_with_ytdlp(&binary, tools.path(), folder.path(), "P-lxOj0XpEE");
+            let result =
+                download_with_ytdlp(&binary, tools.path(), folder.path(), "P-lxOj0XpEE", |_| {});
             assert_eq!(result.is_ok(), succeeds);
             let files = std::fs::read_dir(folder.path())
                 .unwrap()

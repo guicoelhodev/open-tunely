@@ -112,6 +112,15 @@ fn run_ytdlp_process(
     cancelled: &AtomicBool,
     timeout: Duration,
 ) -> Result<Output, String> {
+    run_ytdlp_process_with_progress(command, cancelled, timeout, |_, _| {})
+}
+
+fn run_ytdlp_process_with_progress(
+    command: &mut Command,
+    cancelled: &AtomicBool,
+    timeout: Duration,
+    mut progress: impl FnMut(&[u8], bool),
+) -> Result<Output, String> {
     if cancelled.load(Ordering::SeqCst) {
         return Err("A preparação do áudio foi cancelada.".into());
     }
@@ -159,10 +168,14 @@ fn run_ytdlp_process(
                 ));
             }
             if !stdout_closed {
+                let offset = stdout.len();
                 stdout_closed = read_available(&mut stdout_pipe, &mut stdout)?;
+                progress(&stdout[offset..], false);
             }
             if !stderr_closed {
+                let offset = stderr.len();
                 stderr_closed = read_available(&mut stderr_pipe, &mut stderr)?;
+                progress(&stderr[offset..], true);
             }
             // Keep the parent unreaped until both pipes close. A descendant may
             // still own them after the parent exits; retaining its PID also makes

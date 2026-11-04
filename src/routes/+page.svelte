@@ -1,17 +1,18 @@
 <script lang="ts">
   import { searchSong, reservePreview, resolvePreview, cancelPreview, type Song } from "$lib/services/music.service";
-  import { downloadSong, downloading } from "$lib/services/download.service";
+  import { downloadSong, downloadQueue } from "$lib/services/download.service";
   import { onDestroy, tick } from "svelte";
   import Icon from "@iconify/svelte";
   import downloadIcon from "@iconify-icons/andrsrxn/download";
+  import closeIcon from "@iconify-icons/andrsrxn/x";
   import MusicLibrary from "$lib/components/MusicLibrary.svelte";
   let localLibrary: { stop: () => void } | undefined = $state();
-  let downloadMessage = $state("");
   let downloadError = $state("");
   let destroyed = false;
   let query = $state("");
   let song = $state<Song | null>(null);
   let loading = $state(false);
+  const songQueued = $derived(!!song && $downloadQueue.some((item) => item.id === song?.id && item.status !== "completed"));
   let error = $state("");
   let previewUrl = $state("");
   let previewLoading = $state(false);
@@ -72,18 +73,20 @@
   }
 
   async function download() {
-    if (!song || $downloading) return;
+    if (!song || songQueued) return;
     const selected = song;
-    downloadMessage = "";
     downloadError = "";
     try {
-      const result = await downloadSong(selected.id);
-      if (destroyed || !result) return;
-      downloadMessage = `Salvo: ${result.path}`;
-      downloadError = result.libraryWarning ?? "";
+      await downloadSong(selected);
     } catch (cause) {
       if (!destroyed) downloadError = String(cause);
     }
+  }
+
+  function closeResult() {
+    resetPreview();
+    song = null;
+    document.getElementById("song-query")?.focus();
   }
 
   function playbackFailed() {
@@ -128,14 +131,20 @@
       <p class="error" role="alert">{error}</p>
     {:else if song}
       <article>
-        <p class="caption">Primeiro resultado do YouTube</p>
+        <div class="result-header">
+          <p class="caption">Primeiro resultado do YouTube</p>
+          <button class="close-result" type="button" onclick={closeResult}
+            aria-label="Fechar resultado do YouTube" title="Fechar resultado">
+            <Icon icon={closeIcon} width="20" />
+          </button>
+        </div>
         <h2>{song.title}</h2>
         <div class="song-actions">
           <button type="button" onclick={preview} disabled={previewLoading}>
             {previewLoading ? "Preparando áudio…" : previewError ? "Tentar novamente" : previewUrl ? "Atualizar áudio" : "Ouvir"}
           </button>
-          <button class="download-button" type="button" onclick={download} disabled={$downloading}
-            aria-label={$downloading ? "Baixando música" : "Baixar música"} title="Baixar MP3">
+          <button class="download-button" type="button" onclick={download} disabled={songQueued}
+            aria-label={songQueued ? "Música na fila de downloads" : "Baixar música"} title="Baixar MP3">
             <Icon icon={downloadIcon} width="22" />
           </button>
         </div>
@@ -154,9 +163,7 @@
       </article>
     {/if}
   </div>
-  <div aria-live="polite" aria-busy={$downloading}>
-    {#if $downloading}<p class="caption">Baixando e convertendo para MP3…</p>{/if}
-    {#if downloadMessage}<p class="download-status">{downloadMessage}</p>{/if}
+  <div aria-live="polite">
     {#if downloadError}<p class="error" role="alert">{downloadError}</p>{/if}
   </div>
 </main>
@@ -178,11 +185,13 @@
   button:disabled { opacity: .6; cursor: default; }
   input:focus-visible, button:focus-visible { outline: 3px solid #7aa7ff; outline-offset: 3px; }
   article { margin-top: 24px; padding: 20px; border: 1px solid #d8dee7; border-radius: 12px; background: white; }
+  .result-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .close-result { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 4px; background: transparent; color: #1599c8; }
+  .close-result:hover { background: #edf8fc; }
   .caption { margin: 0 0 8px; color: #536170; font-size: .875rem; }
   h2 { margin: 0; font-size: 1.2rem; overflow-wrap: anywhere; }
   .song-actions { display: flex; align-items: center; gap: 12px; margin: 20px 0 12px; }
   .download-button { display: inline-flex; align-items: center; justify-content: center; background: #e8edf5; color: #536170; }
-  .download-status { overflow-wrap: anywhere; }
   audio { display: block; width: 100%; margin-top: 12px; }
   .error { color: #a51e25; }
   @media (max-width: 720px) { .app-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 20px 16px; } main { padding-top: 0; } }

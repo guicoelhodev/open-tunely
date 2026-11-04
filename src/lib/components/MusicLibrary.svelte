@@ -1,13 +1,14 @@
 <script lang="ts">
+  import DownloadQueue from "./DownloadQueue.svelte";
   import Icon from "@iconify/svelte";
   import folderIcon from "@iconify-icons/andrsrxn/folder-in";
   import playIcon from "@iconify-icons/andrsrxn/play";
-  import pauseIcon from "@iconify-icons/andrsrxn/play-off";
+  import pauseIcon from "@iconify-icons/andrsrxn/pause";
   import musicIcon from "@iconify-icons/andrsrxn/music-note";
-  import { library, choosingFolder, chooseMusicFolder, type Track } from "$lib/services/library.service";
-  import { downloading } from "$lib/services/download.service";
+  import { library, choosingFolder, chooseMusicFolder, initializeMusicLibrary, type Track } from "$lib/services/library.service";
+  import { downloading, downloadNotice } from "$lib/services/download.service";
   import { loadLocalAudio, type LocalAudioSource } from "$lib/services/local-audio.service";
-  import { onDestroy, tick, untrack } from "svelte";
+  import { onMount, onDestroy, tick, untrack } from "svelte";
 
   let { onplay }: { onplay: () => void } = $props();
   const folderLabel = $derived.by(() => {
@@ -40,6 +41,12 @@
     active = null;
     playing = false;
   }
+
+  onMount(() => {
+    void initializeMusicLibrary().catch((cause) => {
+      if (!destroyed) error = String(cause);
+    });
+  });
 
   onDestroy(() => {
     destroyed = true;
@@ -148,6 +155,7 @@
     {#if $choosingFolder}<p>Carregando pasta…</p>{/if}
     {#if preparing}<p>Carregando MP3…</p>{/if}
     {#if error}<p class="error" role="alert">{error}</p>{/if}
+    {#if $downloadNotice}<p class="error" role="alert">{$downloadNotice}</p>{/if}
   </div>
 
   {#if $library}
@@ -165,7 +173,7 @@
               disabled={preparing === track.path}
               aria-label={`${active?.path === track.path && playing ? "Pausar" : "Ouvir"} ${track.title}`}
               title={active?.path === track.path && playing ? "Pausar" : "Ouvir"}>
-              <Icon icon={active?.path === track.path && playing ? pauseIcon : playIcon} width="25" />
+              <Icon icon={active?.path === track.path && playing ? pauseIcon : playIcon} width="20" />
             </button>
           </li>
         {/each}
@@ -197,6 +205,7 @@
       {/key}
     </div>
   {/if}
+  <DownloadQueue />
 </aside>
 
 <style>
@@ -220,7 +229,8 @@
   .cover { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 42px; height: 46px; border-radius: 10px; background: #f0f3f7; color: #7d8a9d; }
   h3 { font-size: .875rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 0 6px; }
   .track-info p { color: #637184; font-size: .75rem; margin: 0; }
-  .play-button { width: 34px; height: 36px; background: transparent; color: #17202a; }
+  .play-button { width: 34px; height: 36px; background: transparent; color: #1599c8; }
+  .play-button:hover { background: #edf8fc; }
   .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; color: #637184; padding: 32px 12px; }
   .empty-state p { margin: 0; color: #34445a; font-size: .9rem; }
   .empty-state span { max-width: 230px; line-height: 1.6; font-size: .8rem; }
