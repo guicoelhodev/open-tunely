@@ -1,10 +1,80 @@
 <script lang="ts">
   import { invoke, isTauri } from "@tauri-apps/api/core";
+  import { onDestroy, tick } from "svelte";
+  import Icon from "@iconify/svelte";
+  import downloadIcon from "@iconify-icons/andrsrxn/download";
+  import MusicLibrary from "$lib/components/MusicLibrary.svelte";
+  let localLibrary: { stop: () => void } | undefined = $state();
   type Song = { id: string; title: string };
   let query = $state("");
   let song = $state<Song | null>(null);
   let loading = $state(false);
   let error = $state("");
+  let previewUrl = $state("");
+  let previewLoading = $state(false);
+  let previewError = $state("");
+  let audio: HTMLAudioElement | undefined = $state();
+  let previewRequest = 0;
+  let previewTicket: number | undefined;
+
+  function cancelPreview(ticket: number) {
+    // A newer preview may already have superseded this ticket.
+    void invoke("cancel_preview", { ticket }).catch(() => {});
+  }
+
+  function resetPreview() {
+    previewRequest += 1;
+    if (previewTicket !== undefined) cancelPreview(previewTicket);
+    previewTicket = undefined;
+    audio?.pause();
+    audio?.removeAttribute("src");
+    audio?.load();
+    previewUrl = "";
+    previewLoading = false;
+    previewError = "";
+  }
+
+  onDestroy(() => {
+    resetPreview();
+  });
+
+  async function preview() {
+    if (!song || previewLoading) return;
+    localLibrary?.stop();
+    resetPreview();
+    const request = previewRequest;
+    const id = song.id;
+    previewLoading = true;
+    try {
+      const ticket = await invoke<number>("reserve_preview");
+      if (request !== previewRequest) {
+        cancelPreview(ticket);
+        return;
+      }
+      previewTicket = ticket;
+      const url = await invoke<string>("preview_song", { id, ticket });
+      if (request !== previewRequest) return;
+      previewUrl = url;
+      await tick();
+      if (request !== previewRequest) return;
+      previewLoading = false;
+      try {
+        await audio?.play();
+      } catch {
+        if (request === previewRequest && !previewError) {
+          previewError = "A reprodução não iniciou. Use os controles abaixo ou tente novamente.";
+        }
+      }
+    } catch (cause) {
+      if (request === previewRequest) previewError = String(cause);
+    } finally {
+      if (request === previewRequest) previewLoading = false;
+    }
+  }
+
+  function playbackFailed() {
+    previewError = "Não foi possível reproduzir o áudio. Clique em Tentar novamente para obter um novo endereço.";
+  }
 
   async function search(event: SubmitEvent) {
     event.preventDefault();
@@ -14,6 +84,7 @@
       return;
     }
     loading = true;
+    resetPreview();
     song = null;
     error = "";
     try {
@@ -26,6 +97,7 @@
   }
 </script>
 
+<div class="app-layout">
 <main>
   <h1>Pesquisar música</h1>
   <p>Encontre uma música no YouTube pelo nome ou artista.</p>
@@ -48,14 +120,38 @@
       <article>
         <p class="caption">Primeiro resultado do YouTube</p>
         <h2>{song.title}</h2>
+        <div class="song-actions">
+          <button type="button" onclick={preview} disabled={previewLoading}>
+            {previewLoading ? "Preparando áudio…" : previewError ? "Tentar novamente" : previewUrl ? "Atualizar áudio" : "Ouvir"}
+          </button>
+          <button class="download-button" type="button" disabled
+            aria-label="Baixar música (em breve)" title="Download em breve">
+            <Icon icon={downloadIcon} width="22" />
+          </button>
+        </div>
+        <div aria-live="polite" aria-busy={previewLoading}>
+          {#if previewLoading}<p class="caption">Obtendo o áudio para reprodução…</p>{/if}
+          {#if previewError}<p class="error" role="alert">{previewError}</p>{/if}
+        </div>
+        {#if previewUrl}
+          {#key previewUrl}
+            <audio bind:this={audio} src={previewUrl} controls preload="none"
+              aria-label={`Ouvir ${song.title}`} onerror={playbackFailed}>
+              <track kind="captions" />
+            </audio>
+          {/key}
+        {/if}
       </article>
     {/if}
   </div>
 </main>
+<MusicLibrary bind:this={localLibrary} onplay={resetPreview} />
+</div>
 
 <style>
   :global(body) { margin: 0; background: #f6f6f6; color: #17202a; font-family: Inter, system-ui, sans-serif; }
-  main { max-width: 640px; margin: 10vh auto; padding: 24px; }
+  .app-layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 32px; max-width: 1180px; margin: 0 auto; padding: 32px 24px; }
+  main { min-width: 0; padding: 24px 0; }
   h1 { margin-bottom: 8px; }
   p { line-height: 1.6; }
   form { margin-top: 32px; }
@@ -69,5 +165,10 @@
   article { margin-top: 24px; padding: 20px; border: 1px solid #d8dee7; border-radius: 12px; background: white; }
   .caption { margin: 0 0 8px; color: #536170; font-size: .875rem; }
   h2 { margin: 0; font-size: 1.2rem; overflow-wrap: anywhere; }
+  .song-actions { display: flex; align-items: center; gap: 12px; margin: 20px 0 12px; }
+  .download-button { display: inline-flex; align-items: center; justify-content: center; background: #e8edf5; color: #536170; }
+  .download-button:disabled { cursor: not-allowed; }
+  audio { display: block; width: 100%; margin-top: 12px; }
   .error { color: #a51e25; }
+  @media (max-width: 720px) { .app-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 20px 16px; } main { padding-top: 0; } }
 </style>
