@@ -6,8 +6,42 @@ use std::{
 use tauri::Manager;
 use tauri_plugin_dialog::DialogExt;
 
-#[derive(Default)]
 pub struct LibraryState(pub Mutex<Option<PathBuf>>);
+
+impl Default for LibraryState {
+    fn default() -> Self {
+        Self(Mutex::new(development_folder()))
+    }
+}
+
+fn development_folder() -> Option<PathBuf> {
+    #[cfg(debug_assertions)]
+    {
+        #[derive(serde::Deserialize)]
+        struct LocalConfig {
+            music_folder: PathBuf,
+        }
+        let config = Path::new(env!("CARGO_MANIFEST_DIR")).join("../dev-library.local.json");
+        let bytes = match std::fs::read(config) {
+            Ok(bytes) => bytes,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return None,
+            Err(error) => {
+                eprintln!("Não foi possível ler a configuração local da biblioteca: {error}");
+                return None;
+            }
+        };
+        let folder = serde_json::from_slice::<LocalConfig>(&bytes)
+            .ok()
+            .and_then(|config| config.music_folder.canonicalize().ok())
+            .filter(|folder| folder.is_dir());
+        if folder.is_none() {
+            eprintln!("Configuração local da biblioteca inválida ou pasta inacessível.");
+        }
+        folder
+    }
+    #[cfg(not(debug_assertions))]
+    None
+}
 
 #[derive(Debug, Serialize)]
 pub struct LocalTrack {

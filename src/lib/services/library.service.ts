@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { get, writable, readonly } from "svelte/store";
 import { requireDesktop } from "./music.service";
 
@@ -11,6 +11,12 @@ export const library = readonly(currentLibrary);
 export const choosingFolder = readonly(selecting);
 let selection: Promise<Library | null> | undefined;
 let revision = 0;
+let initialization: Promise<void> | undefined;
+
+export function initializeMusicLibrary(): Promise<void> {
+  if (!isTauri()) return Promise.resolve();
+  return initialization ??= refreshMusicLibrary();
+}
 
 export function chooseMusicFolder(): Promise<Library | null> {
   requireDesktop();
@@ -29,7 +35,8 @@ export function chooseMusicFolder(): Promise<Library | null> {
   return selection;
 }
 
-export function ensureMusicFolder() {
+export async function ensureMusicFolder() {
+  await initializeMusicLibrary().catch(() => {});
   // Wait for an open picker rather than downloading into its previous selection.
   return selection ?? Promise.resolve(get(currentLibrary) ?? null).then(
     (current) => current ?? chooseMusicFolder(),
