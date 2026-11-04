@@ -43,7 +43,7 @@ fn download_command(binary: &Path, ffmpeg: &Path, work: &Path, id: &str) -> Comm
             "--audio-quality",
             "0",
             "--output",
-            "%(title).150B [%(id)s].%(ext)s",
+            "%(title).150B.%(ext)s",
             "--ffmpeg-location",
         ])
         .arg(ffmpeg)
