@@ -107,9 +107,9 @@
 
 <svelte:window onresize={closeMenu} onblur={closeMenu} onpointerdown={outsidePointer} onkeydown={escapeMenu} />
 
-<Popover class="inset-auto w-[min(144px,calc(100vw-32px))] rounded-[9px] p-1 shadow-[0_8px_28px_#17202a26] {keyboardFocus ? '' : 'outline-none [&_button]:outline-none'}" bind:element={menu} popover="manual" role="menu" tabindex={-1} aria-label="Ações da música" onkeydown={menuKeys} onpointerdown={() => keyboardFocus = false}>
-  <button class="flex cursor-pointer items-center bg-transparent text-[#34445a] hover:bg-[#edf3ff] focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50 w-full gap-2 rounded-md px-[9px] py-[7px] text-left text-[0.8rem]" type="button" role="menuitem" onclick={() => edit("rename")}><Icon icon={editIcon} width="16" />Renomear</button>
-  <button class="flex cursor-pointer items-center focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50 w-full gap-2 rounded-md px-[9px] py-[7px] text-left text-[0.8rem] mt-0.5 bg-[#fcebed] text-[#a51e25] hover:bg-[#f8dce0]" type="button" role="menuitem" onclick={() => edit("delete")}><Icon icon={trashIcon} width="16" />Excluir</button>
+<Popover class="inset-auto w-[min(144px,calc(100vw-32px))] rounded-md p-1 shadow-[0_8px_28px_#17202a26] {keyboardFocus ? '' : 'outline-none [&_button]:outline-none'}" bind:element={menu} popover="manual" role="menu" tabindex={-1} aria-label="Ações da música" onkeydown={menuKeys} onpointerdown={() => keyboardFocus = false}>
+  <button class="flex cursor-pointer items-center bg-transparent text-foreground hover:bg-secondary focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50 w-full gap-2 rounded-sm px-[9px] py-[7px] text-left text-[0.8rem]" type="button" role="menuitem" onclick={() => edit("rename")}><Icon icon={editIcon} width="16" />Renomear</button>
+  <button class="flex cursor-pointer items-center focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50 w-full gap-2 rounded-sm px-[9px] py-[7px] text-left text-[0.8rem] mt-0.5 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60" type="button" role="menuitem" onclick={() => edit("delete")}><Icon icon={trashIcon} width="16" />Excluir</button>
 </Popover>
 
 <Modal bind:element={dialog} oncancel={(event) => { if (busy) event.preventDefault(); }} onclose={() => origin?.focus()} aria-labelledby="track-action-title">
@@ -117,15 +117,15 @@
     <h3 class="mb-5 text-base font-bold" id="track-action-title">{action === "rename" ? "Renomear música" : "Excluir música"}</h3>
     {#if action === "rename"}
       <label class="mb-2 block text-[0.85rem]" for="track-name">Nome da música</label>
-      <input class="w-full rounded-lg border border-[#8b949e] p-2.5 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-2" bind:this={input} id="track-name" bind:value={name} required maxlength="240" disabled={busy} />
+      <input class="w-full rounded-md border border-input p-2.5 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-2" bind:this={input} id="track-name" bind:value={name} required maxlength="240" disabled={busy} />
       <p class="my-4 text-[0.85rem] leading-[1.6] [overflow-wrap:anywhere]">A extensão .mp3 será mantida.</p>
     {:else}
       <p class="my-4 text-[0.85rem] leading-[1.6] [overflow-wrap:anywhere]">Excluir “{selected?.title}” da pasta? O arquivo será apagado permanentemente.</p>
     {/if}
-    {#if error}<p class="my-4 text-[0.85rem] leading-[1.6] text-[#a51e25] [overflow-wrap:anywhere]" role="alert">{error}</p>{/if}
+    {#if error}<p class="my-4 text-[0.85rem] leading-[1.6] text-red-700 dark:text-red-300 [overflow-wrap:anywhere]" role="alert">{error}</p>{/if}
     <div class="mt-5 flex justify-end gap-2">
-      <button class="flex cursor-pointer items-center gap-2.5 rounded-lg bg-transparent px-3 py-2.5 text-[#34445a] hover:bg-[#edf3ff] focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50" type="button" onclick={cancel} disabled={busy}>Cancelar</button>
-      <button class="flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50 {action === 'delete' ? 'bg-[#fcebed] text-[#a51e25] hover:bg-[#f8dce0]' : 'bg-[#2458d3] text-white hover:bg-[#1946b1]'}" type="submit" disabled={busy || (action === "rename" && !name.trim())}>
+      <button class="flex cursor-pointer items-center gap-2.5 rounded-md bg-transparent px-3 py-2.5 text-foreground hover:bg-secondary focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50" type="button" onclick={cancel} disabled={busy}>Cancelar</button>
+      <button class="flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2.5 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50 {action === 'delete' ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60' : 'bg-primary text-primary-foreground hover:bg-primary/90'}" type="submit" disabled={busy || (action === "rename" && !name.trim())}>
         {busy ? "Aguarde…" : action === "rename" ? "Salvar" : "Excluir"}
       </button>
     </div>

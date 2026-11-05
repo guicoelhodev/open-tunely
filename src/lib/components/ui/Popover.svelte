@@ -18,7 +18,7 @@
   {...attributes}
   bind:this={element}
   {popover}
-  class="fixed m-0 border border-[#d8dee7] bg-white text-[#17202a] {className}"
+  class="fixed m-0 border border-border bg-card text-card-foreground {className}"
 >
   {@render children()}
 </div>
