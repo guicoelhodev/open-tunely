@@ -1,3 +1,4 @@
+import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 import { sveltekit } from "@sveltejs/kit/vite";
@@ -7,7 +8,7 @@ const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
-  plugins: [tailwindcss(), sveltekit()],
+  plugins: [tailwindcss(), sveltekit(), paraglideVitePlugin({ project: "./project.inlang", outdir: "./src/lib/paraglide", strategy: ["localStorage", "baseLocale"], emitTsDeclarations: true })],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

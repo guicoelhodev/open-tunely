@@ -1,3 +1,4 @@
+import { m } from "$lib/paraglide/messages.js";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { derived, get, readonly, writable } from "svelte/store";
 import { ensureMusicFolder, refreshMusicLibrary } from "./library.service";
@@ -58,7 +59,7 @@ async function processQueue() {
           await refreshMusicLibrary();
           notice.set("");
         } catch {
-          notice.set("MP3 salvo. Selecione a pasta novamente para atualizar a biblioteca.");
+          notice.set(m.text_mp3_salvo_selecione_a_pasta_novamente_para_atualizar_a());
         }
         update(item.key, { status: "completed", percent: 100 });
       } catch (cause) {

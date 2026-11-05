@@ -1,3 +1,4 @@
+import { m } from "$lib/paraglide/messages.js";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { get, writable, readonly } from "svelte/store";
 import { requireDesktop } from "./music.service";
@@ -23,7 +24,7 @@ export function chooseMusicFolder(): Promise<Library | null> {
   if (selection) return selection;
   revision += 1;
   selecting.set(true);
-  selection = invoke<Library | null>("choose_music_folder")
+  selection = invoke<Library | null>("choose_music_folder", { title: m.text_selecionar_pasta_de_musicas() })
     .then((chosen) => {
       if (chosen) currentLibrary.set(chosen);
       return chosen;

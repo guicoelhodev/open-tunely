@@ -1,9 +1,10 @@
+import { m } from "$lib/paraglide/messages.js";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
 export type Song = { id: string; title: string; channel?: string | null };
 
 export function requireDesktop() {
-  if (!isTauri()) throw new Error("Abra a janela desktop do aplicativo para usar esta função.");
+  if (!isTauri()) throw new Error(m.text_abra_a_janela_desktop_do_aplicativo_para_usar_esta_func());
 }
 
 export function searchSong(query: string) {

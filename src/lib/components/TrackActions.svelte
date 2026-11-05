@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { errorMessage } from "$lib/services/errors.service";
+  import { locale } from "$lib/services/locale.service";
+  import { m } from "$lib/paraglide/messages.js";
   import Button from "./ui/Button.svelte";
   import Icon from "@iconify/svelte";
   import Popover from "./ui/Popover.svelte";
@@ -82,7 +85,7 @@
     event.preventDefault();
     if (!selected || busy) return;
     if ($library?.folder !== folder) {
-      error = "A pasta selecionada mudou. Feche este diálogo e escolha a música novamente.";
+      error = m.text_a_pasta_selecionada_mudou_feche_este_dialogo_e_escolha({}, { locale: $locale });
       return;
     }
     busy = true;
@@ -101,33 +104,33 @@
       await refreshMusicLibrary();
       onnotice("");
     } catch {
-      onnotice("Arquivo alterado. Selecione a pasta novamente para atualizar a biblioteca.");
+      onnotice(m.text_arquivo_alterado_selecione_a_pasta_novamente_para_atual({}, { locale: $locale }));
     } finally { busy = false; }
   }
 </script>
 
 <svelte:window onresize={closeMenu} onblur={closeMenu} onpointerdown={outsidePointer} onkeydown={escapeMenu} />
 
-<Popover class="inset-auto w-[min(144px,calc(100vw-32px))] rounded-md p-1 shadow-[0_8px_28px_#17202a26] {keyboardFocus ? '' : 'outline-none [&_button]:outline-none'}" bind:element={menu} popover="manual" role="menu" tabindex={-1} aria-label="Ações da música" onkeydown={menuKeys} onpointerdown={() => keyboardFocus = false}>
-  <Button variant="option" size="custom" layout="menu" class="w-full px-[9px] py-[7px] text-[0.8rem]" type="button" role="menuitem" onclick={() => edit("rename")}><Icon icon={editIcon} width="16" />Renomear</Button>
-  <Button variant="danger" size="custom" layout="menu" class="mt-0.5 w-full px-[9px] py-[7px] text-[0.8rem]" type="button" role="menuitem" onclick={() => edit("delete")}><Icon icon={trashIcon} width="16" />Excluir</Button>
+<Popover class="inset-auto w-[min(144px,calc(100vw-32px))] rounded-md p-1 shadow-[0_8px_28px_#17202a26] {keyboardFocus ? '' : 'outline-none [&_button]:outline-none'}" bind:element={menu} popover="manual" role="menu" tabindex={-1} aria-label={m.text_acoes_da_musica({}, { locale: $locale })} onkeydown={menuKeys} onpointerdown={() => keyboardFocus = false}>
+  <Button variant="option" size="custom" layout="menu" class="w-full px-[9px] py-[7px] text-[0.8rem]" type="button" role="menuitem" onclick={() => edit("rename")}><Icon icon={editIcon} width="16" />{m.text_renomear({}, { locale: $locale })}</Button>
+  <Button variant="danger" size="custom" layout="menu" class="mt-0.5 w-full px-[9px] py-[7px] text-[0.8rem]" type="button" role="menuitem" onclick={() => edit("delete")}><Icon icon={trashIcon} width="16" />{m.text_excluir({}, { locale: $locale })}</Button>
 </Popover>
 
 <Modal bind:element={dialog} oncancel={(event) => { if (busy) event.preventDefault(); }} onclose={() => origin?.focus()} aria-labelledby="track-action-title">
   <form onsubmit={submit}>
-    <h3 class="mb-5 text-base font-bold" id="track-action-title">{action === "rename" ? "Renomear música" : "Excluir música"}</h3>
+    <h3 class="mb-5 text-base font-bold" id="track-action-title">{action === "rename" ? m.text_renomear_musica({}, { locale: $locale }) : m.text_excluir_musica({}, { locale: $locale })}</h3>
     {#if action === "rename"}
-      <label class="mb-2 block text-[0.85rem]" for="track-name">Nome da música</label>
+      <label class="mb-2 block text-[0.85rem]" for="track-name">{m.text_nome_da_musica({}, { locale: $locale })}</label>
       <input class="w-full rounded-md border border-input p-2.5 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-2" bind:this={input} id="track-name" bind:value={name} required maxlength="240" disabled={busy} />
-      <p class="my-4 text-[0.85rem] leading-[1.6] [overflow-wrap:anywhere]">A extensão .mp3 será mantida.</p>
+      <p class="my-4 text-[0.85rem] leading-[1.6] [overflow-wrap:anywhere]">{m.text_a_extensao_mp3_sera_mantida({}, { locale: $locale })}</p>
     {:else}
-      <p class="my-4 text-[0.85rem] leading-[1.6] [overflow-wrap:anywhere]">Excluir “{selected?.title}” da pasta? O arquivo será apagado permanentemente.</p>
+      <p class="my-4 text-[0.85rem] leading-[1.6] [overflow-wrap:anywhere]">{m.delete_confirm({ title: selected?.title ?? "" }, { locale: $locale })}</p>
     {/if}
-    {#if error}<p class="my-4 text-[0.85rem] leading-[1.6] text-red-700 dark:text-red-300 [overflow-wrap:anywhere]" role="alert">{error}</p>{/if}
+    {#if error}<p class="my-4 text-[0.85rem] leading-[1.6] text-red-700 dark:text-red-300 [overflow-wrap:anywhere]" role="alert">{errorMessage(error, $locale)}</p>{/if}
     <div class="mt-5 flex justify-end gap-2">
-      <Button variant="muted" type="button" onclick={cancel} disabled={busy}>Cancelar</Button>
+      <Button variant="muted" type="button" onclick={cancel} disabled={busy}>{m.text_cancelar({}, { locale: $locale })}</Button>
       <Button variant={action === "delete" ? "danger" : "primary"} type="submit" disabled={busy || (action === "rename" && !name.trim())}>
-        {busy ? "Aguarde…" : action === "rename" ? "Salvar" : "Excluir"}
+        {busy ? m.text_aguarde({}, { locale: $locale }) : action === "rename" ? m.text_salvar({}, { locale: $locale }) : m.text_excluir({}, { locale: $locale })}
       </Button>
     </div>
   </form>

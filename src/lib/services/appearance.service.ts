@@ -1,10 +1,12 @@
+import type { Locale } from "$lib/paraglide/runtime.js";
+import { m } from "$lib/paraglide/messages.js";
 import { get, readonly, writable } from "svelte/store";
 
 export const palettes = [
-  { id: "neutral", label: "Neutro", color: "#525252", darkColor: "#d4d4d4" },
-  { id: "cyan", label: "Ciano", color: "#0891b2", darkColor: "#22d3ee" },
-  { id: "indigo", label: "Índigo", color: "#4f46e5", darkColor: "#a5b4fc" },
-  { id: "pink", label: "Rosa", color: "#e63e93", darkColor: "#ff69b4" },
+  { id: "neutral", label: (locale: Locale) => m.text_neutro({}, { locale }), color: "#525252", darkColor: "#d4d4d4" },
+  { id: "cyan", label: (locale: Locale) => m.text_ciano({}, { locale }), color: "#0891b2", darkColor: "#22d3ee" },
+  { id: "indigo", label: (locale: Locale) => m.text_indigo({}, { locale }), color: "#4f46e5", darkColor: "#a5b4fc" },
+  { id: "pink", label: (locale: Locale) => m.text_rosa({}, { locale }), color: "#e63e93", darkColor: "#ff69b4" },
 ] as const;
 
 export type Palette = typeof palettes[number]["id"];

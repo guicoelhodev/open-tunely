@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { errorMessage } from "$lib/services/errors.service";
+  import { locale } from "$lib/services/locale.service";
+  import { m } from "$lib/paraglide/messages.js";
   import Button from "./ui/Button.svelte";
   import { onMount } from "svelte";
   import Icon from "@iconify/svelte";
@@ -27,26 +30,26 @@
   function playing(value: boolean) { player.update(s => ({ ...s, playing: value })); }
 </script>
 
-<footer class="mt-auto rounded-lg border border-border bg-card px-4 py-4" aria-label="Player de música">
+<footer class="mt-auto rounded-lg border border-border bg-card px-4 py-4" aria-label={m.text_player_de_musica({}, { locale: $locale })}>
   <div class="flex flex-wrap items-center gap-4">
-    <div class="min-w-0 flex-1"><p title={$player.track?.title} class="truncate text-sm font-semibold">{$player.track?.title ?? "Selecione uma música"}</p>
+    <div class="min-w-0 flex-1"><p title={$player.track?.title} class="truncate text-sm font-semibold">{$player.track?.title ?? m.text_selecione_uma_musica({}, { locale: $locale })}</p>
       {#if $player.track?.subtitle}<p class="mt-1 truncate text-xs text-muted-foreground" title={$player.track.subtitle}>{$player.track.subtitle}</p>{/if}
-      {#if $player.error}<p class="text-xs text-red-700 dark:text-red-300" role="alert">{$player.error}</p>{/if}
+      {#if $player.error}<p class="text-xs text-red-700 dark:text-red-300" role="alert">{errorMessage($player.error, $locale)}</p>{/if}
     </div>
     <div class="flex items-center gap-3 text-primary">
-      <Button variant="ghost" size="custom" class="p-2" aria-label="Anterior" disabled={!$player.track || $player.loading} onclick={() => stepPlayer(-1)}><Icon icon={previousIcon} width="20" /></Button>
-      <Button variant="soft" size="custom" round class="p-3" aria-label={$player.playing ? "Pausar" : "Reproduzir"} disabled={!$player.track || $player.loading} onclick={togglePlayer}>
+      <Button variant="ghost" size="custom" class="p-2" aria-label={m.text_anterior({}, { locale: $locale })} disabled={!$player.track || $player.loading} onclick={() => stepPlayer(-1)}><Icon icon={previousIcon} width="20" /></Button>
+      <Button variant="soft" size="custom" round class="p-3" aria-label={$player.playing ? m.text_pausar({}, { locale: $locale }) : m.text_reproduzir({}, { locale: $locale })} disabled={!$player.track || $player.loading} onclick={togglePlayer}>
         {#if $player.loading}<span class="block size-5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true"></span>{:else}<Icon icon={$player.playing ? pauseIcon : playIcon} width="20" />{/if}
       </Button>
-      <Button variant="ghost" size="custom" class="p-2" aria-label="Próxima" disabled={!$player.track || $player.loading} onclick={() => stepPlayer(1)}><Icon icon={nextIcon} width="20" /></Button>
-      <Button variant={$player.shuffle ? "soft" : "muted"} size="custom" class="p-2" aria-label="Reprodução aleatória" aria-pressed={$player.shuffle} onclick={() => player.update(s => ({ ...s, shuffle: !s.shuffle }))}><Icon icon={shuffleIcon} width="20" /></Button>
+      <Button variant="ghost" size="custom" class="p-2" aria-label={m.text_proxima({}, { locale: $locale })} disabled={!$player.track || $player.loading} onclick={() => stepPlayer(1)}><Icon icon={nextIcon} width="20" /></Button>
+      <Button variant={$player.shuffle ? "soft" : "muted"} size="custom" class="p-2" aria-label={m.text_reproducao_aleatoria({}, { locale: $locale })} aria-pressed={$player.shuffle} onclick={() => player.update(s => ({ ...s, shuffle: !s.shuffle }))}><Icon icon={shuffleIcon} width="20" /></Button>
     </div>
-    <label class="flex items-center gap-2 text-muted-foreground"><Icon icon={volumeIcon} width="20" /><span class="sr-only">Volume</span><input class="w-24 accent-primary" type="range" min="0" max="1" step="0.01" bind:value={volume} /></label>
+    <label class="flex items-center gap-2 text-muted-foreground"><Icon icon={volumeIcon} width="20" /><span class="sr-only">{m.text_volume({}, { locale: $locale })}</span><input class="w-24 accent-primary" type="range" min="0" max="1" step="0.01" bind:value={volume} /></label>
   </div>
   <div class="mt-3 flex items-center gap-3 text-xs tabular-nums text-muted-foreground">
     <span>{formatTime(currentTime)}</span>
-    <input class="min-w-0 flex-1 cursor-pointer accent-primary disabled:cursor-default disabled:opacity-40" type="range" min="0" max={seekableDuration || 1} step="0.1" value={currentTime} disabled={!seekableDuration || $player.loading} oninput={seek} aria-label="Posição da música" aria-valuetext={`${formatTime(currentTime)} de ${formatTime(seekableDuration)}`} />
+    <input class="min-w-0 flex-1 cursor-pointer accent-primary disabled:cursor-default disabled:opacity-40" type="range" min="0" max={seekableDuration || 1} step="0.1" value={currentTime} disabled={!seekableDuration || $player.loading} oninput={seek} aria-label={m.text_posicao_da_musica({}, { locale: $locale })} aria-valuetext={m.position_of({ current: formatTime(currentTime), total: formatTime(seekableDuration) }, { locale: $locale })} />
     <span>{formatTime(seekableDuration)}</span>
   </div>
 </footer>
-<audio bind:this={audio} bind:currentTime bind:duration bind:volume preload="metadata" onemptied={() => { currentTime = 0; duration = 0; }} onplay={() => playing(true)} onpause={() => playing(false)} onended={() => { playing(false); stepPlayer(1, true); }} onerror={() => player.update(s => ({ ...s, playing: false, error: "Não foi possível reproduzir este áudio." }))}><track kind="captions" /></audio>
+<audio bind:this={audio} bind:currentTime bind:duration bind:volume preload="metadata" onemptied={() => { currentTime = 0; duration = 0; }} onplay={() => playing(true)} onpause={() => playing(false)} onended={() => { playing(false); stepPlayer(1, true); }} onerror={() => player.update(s => ({ ...s, playing: false, error: m.text_nao_foi_possivel_reproduzir_este_audio({}, { locale: $locale }) }))}><track kind="captions" /></audio>

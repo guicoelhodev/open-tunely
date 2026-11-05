@@ -259,7 +259,7 @@ struct Song {
 fn search_target(query: &str) -> Result<String, String> {
     let query = query.trim();
     if query.is_empty() || query.chars().count() > 300 {
-        return Err("Informe um nome, artista ou URL entre 1 e 300 caracteres.".into());
+        return Err("ERR_QUERY_INVALID|Informe um nome, artista ou URL entre 1 e 300 caracteres.".into());
     }
     static URL_PREFIX: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(
@@ -271,7 +271,7 @@ fn search_target(query: &str) -> Result<String, String> {
         return Ok(format!("ytsearch1:{query}"));
     }
 
-    let invalid_url = "Informe um link válido de um vídeo do YouTube.";
+    let invalid_url = "ERR_URL_INVALID|Informe um link válido de um vídeo do YouTube.";
     if query.chars().any(char::is_whitespace) {
         return Err(invalid_url.into());
     }
@@ -339,7 +339,7 @@ fn search_with_ytdlp(binary: PathBuf, target: &str) -> Result<Song, String> {
     if !output.status.success() {
         eprintln!("yt-dlp: {}", String::from_utf8_lossy(&output.stderr));
         return Err(
-            "Não foi possível pesquisar no YouTube. Verifique sua conexão e tente novamente."
+            "ERR_SEARCH_CONNECTION|Não foi possível pesquisar no YouTube. Verifique sua conexão e tente novamente."
                 .into(),
         );
     }
@@ -352,7 +352,7 @@ fn parse_song(output: &[u8]) -> Result<Song, String> {
     let line = text
         .lines()
         .find(|line| !line.trim().is_empty())
-        .ok_or_else(|| "Nenhuma música encontrada. Tente outro nome ou link.".to_string())?;
+        .ok_or_else(|| "ERR_NO_RESULTS|Nenhuma música encontrada. Tente outro nome ou link.".to_string())?;
     let song: Song = serde_json::from_str(line)
         .map_err(|_| "O yt-dlp retornou dados inesperados.".to_string())?;
     if song.id.trim().is_empty() || song.title.trim().is_empty() {

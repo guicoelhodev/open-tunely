@@ -81,9 +81,9 @@ fn publish_mp3(work: &Path, folder: &Path) -> Result<PathBuf, String> {
         .map_err(|_| "Não foi possível preparar o MP3 para salvar.")?;
     temporary.persist_noclobber(&destination).map_err(|error| {
         if error.error.kind() == std::io::ErrorKind::AlreadyExists {
-            "Esta música já existe na pasta selecionada.".to_string()
+            "ERR_DOWNLOAD_EXISTS|Esta música já existe na pasta selecionada.".to_string()
         } else {
-            "Não foi possível salvar o MP3 na pasta. Verifique o espaço e as permissões.".into()
+            "ERR_SAVE_PERMISSION|Não foi possível salvar o MP3 na pasta. Verifique o espaço e as permissões.".into()
         }
     })?;
     Ok(destination)
@@ -141,7 +141,7 @@ fn download_with_ytdlp(
     let work = tempfile::Builder::new()
         .prefix(".downloader-")
         .tempdir_in(folder)
-        .map_err(|_| "Não foi possível gravar na pasta. Verifique o espaço e as permissões.")?;
+        .map_err(|_| "ERR_WRITE_PERMISSION|Não foi possível gravar na pasta. Verifique o espaço e as permissões.")?;
     let mut reader = ProgressReader::default();
     let output = super::run_ytdlp_process_with_progress(
         &mut download_command(binary, ffmpeg, work.path(), id),
@@ -154,7 +154,7 @@ fn download_with_ytdlp(
             "yt-dlp download: {}",
             String::from_utf8_lossy(&output.stderr)
         );
-        return Err("Não foi possível baixar e converter esta música. Verifique sua conexão e tente novamente.".into());
+        return Err("ERR_DOWNLOAD_CONNECTION|Não foi possível baixar e converter esta música. Verifique sua conexão e tente novamente.".into());
     }
     publish_mp3(work.path(), folder)
     // TempDir removes source audio and partial files on success or failure.
@@ -180,7 +180,7 @@ pub async fn download_song(
         let _guard = state
             .0
             .try_lock()
-            .map_err(|_| "Aguarde o download atual terminar.")?;
+            .map_err(|_| "ERR_DOWNLOAD_BUSY|Aguarde o download atual terminar.")?;
         download_with_ytdlp(
             &binary,
             ffmpeg.parent().unwrap(),

@@ -59,7 +59,7 @@ pub struct MusicLibrary {
 
 fn scan_folder(folder: &Path) -> Result<Vec<LocalTrack>, String> {
     let entries = std::fs::read_dir(folder)
-        .map_err(|_| "Não foi possível ler a pasta. Verifique as permissões e tente novamente.")?;
+        .map_err(|_| "ERR_READ_PERMISSION|Não foi possível ler a pasta. Verifique as permissões e tente novamente.")?;
     let mut tracks = Vec::new();
     for entry in entries {
         let entry = entry.map_err(|_| "Não foi possível ler um dos arquivos da pasta.")?;
@@ -105,12 +105,12 @@ fn scan_folder(folder: &Path) -> Result<Vec<LocalTrack>, String> {
 }
 
 #[tauri::command]
-pub async fn choose_music_folder(app: tauri::AppHandle) -> Result<Option<MusicLibrary>, String> {
+pub async fn choose_music_folder(app: tauri::AppHandle, title: String) -> Result<Option<MusicLibrary>, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let Some(folder) = app
             .dialog()
             .file()
-            .set_title("Selecionar pasta de músicas")
+            .set_title(title)
             .blocking_pick_folder()
         else {
             return Ok(None);
@@ -138,7 +138,7 @@ pub fn selected_folder(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         .lock()
         .map_err(|_| "Não foi possível acessar a biblioteca.")?
         .clone()
-        .ok_or_else(|| "Selecione uma pasta antes de baixar.".into())
+        .ok_or_else(|| "ERR_FOLDER_MISSING|Selecione uma pasta antes de baixar.".into())
 }
 
 fn load_library(app: &tauri::AppHandle, folder: &Path) -> Result<MusicLibrary, String> {
@@ -178,7 +178,7 @@ pub(crate) fn checked_track(folder: &Path, address: &str) -> Result<PathBuf, Str
             .is_some_and(|ext| ext.eq_ignore_ascii_case("mp3"))
         || !std::fs::symlink_metadata(&path).is_ok_and(|meta| meta.file_type().is_file())
     {
-        return Err("O MP3 não está mais disponível na pasta selecionada.".into());
+        return Err("ERR_FILE_MISSING|O MP3 não está mais disponível na pasta selecionada.".into());
     }
     Ok(path)
 }
@@ -200,7 +200,7 @@ fn renamed_path(path: &Path, name: &str) -> Result<PathBuf, String> {
         || stem.ends_with([' ', '.'])
     {
         return Err(
-            "Informe um nome válido, sem barras ou caracteres especiais de arquivo.".into(),
+            "ERR_NAME_INVALID|Informe um nome válido, sem barras ou caracteres especiais de arquivo.".into(),
         );
     }
     Ok(path.with_file_name(format!("{stem}.mp3")))
@@ -240,9 +240,9 @@ fn rename_track_file(path: &Path, destination: &Path) -> Result<(), String> {
     let result: std::io::Result<()> = Err(std::io::ErrorKind::Unsupported.into());
     result.map_err(|error| {
         if error.kind() == std::io::ErrorKind::AlreadyExists {
-            "Já existe um arquivo com esse nome. Escolha outro nome.".into()
+            "ERR_NAME_EXISTS|Já existe um arquivo com esse nome. Escolha outro nome.".into()
         } else {
-            "Não foi possível renomear o MP3. Verifique as permissões da pasta.".into()
+            "ERR_RENAME_PERMISSION|Não foi possível renomear o MP3. Verifique as permissões da pasta.".into()
         }
     })
 }
@@ -269,7 +269,7 @@ pub async fn delete_music_track(app: tauri::AppHandle, path: String) -> Result<(
     tauri::async_runtime::spawn_blocking(move || {
         let path = checked_track(&folder, &path)?;
         std::fs::remove_file(path).map_err(|_| {
-            "Não foi possível excluir o MP3. Verifique as permissões da pasta.".to_string()
+            "ERR_DELETE_PERMISSION|Não foi possível excluir o MP3. Verifique as permissões da pasta.".to_string()
         })
     })
     .await

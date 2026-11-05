@@ -1,5 +1,8 @@
 <script lang="ts">
   import "../app.css";
+  import { onMount } from "svelte";
+  import { getLocale } from "$lib/paraglide/runtime.js";
+  onMount(() => { document.documentElement.lang = getLocale(); });
   let { children } = $props();
 </script>
 
