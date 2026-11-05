@@ -86,7 +86,7 @@ See [the project context](docs/context.md) for more architectural details.
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Run backend tests |
 | `cargo fmt --manifest-path src-tauri/Cargo.toml --check` | Check Rust formatting |
 
-Frontend services live in `src/lib/services/`, UI components in `src/lib/components/`, translations in `messages/`, and backend code in `src-tauri/src/`.
+Frontend services live in `src/lib/services/`, UI components in `src/lib/components/`, translations in `src/languages/`, and backend code in `src-tauri/src/`.
 
 ## Current limitations
 

@@ -59,7 +59,7 @@ async function processQueue() {
           await refreshMusicLibrary();
           notice.set("");
         } catch {
-          notice.set(m.text_mp3_salvo_selecione_a_pasta_novamente_para_atualizar_a());
+          notice.set(m.text_mp3_saved_select_the_folder_again_to_refresh_the_library());
         }
         update(item.key, { status: "completed", percent: 100 });
       } catch (cause) {

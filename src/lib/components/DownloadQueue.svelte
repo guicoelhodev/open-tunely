@@ -19,11 +19,11 @@
   let panel: HTMLDivElement | undefined = $state();
 
   function status(item: DownloadItem, activeLocale: typeof $locale) {
-    if (item.status === "queued") return m.text_na_fila({}, { locale: activeLocale });
-    if (item.status === "converting") return m.text_convertendo_para_mp3({}, { locale: activeLocale });
-    if (item.status === "completed") return m.text_concluido({}, { locale: activeLocale });
-    if (item.status === "error") return m.text_falha_no_download({}, { locale: activeLocale });
-    return item.percent === null ? m.text_preparando_download({}, { locale: activeLocale }) : `${Math.floor(item.percent)}%`;
+    if (item.status === "queued") return m.text_queued({}, { locale: activeLocale });
+    if (item.status === "converting") return m.text_converting_to_mp3({}, { locale: activeLocale });
+    if (item.status === "completed") return m.text_completed({}, { locale: activeLocale });
+    if (item.status === "error") return m.text_download_failed({}, { locale: activeLocale });
+    return item.percent === null ? m.text_preparing_download({}, { locale: activeLocale }) : `${Math.floor(item.percent)}%`;
   }
 
   function positionPanel(event: ToggleEvent) {
@@ -48,7 +48,7 @@
   <div class="mt-auto shrink-0 pt-3.5 pr-4">
     <Popover id="download-queue-panel" class="inset-[auto_24px_110px_auto] max-h-[min(440px,65dvh)] w-[min(350px,calc(100vw-48px))] overflow-y-auto rounded-xl p-3.5 shadow-[0_12px_40px_#17202a26]" bind:element={panel} onbeforetoggle={positionPanel}>
       <header class="mb-3.5 flex items-center justify-between"><h3 class="text-[0.95rem] font-bold">Downloads</h3><span class="text-xs text-muted-foreground">{m.queued_count({ count: pending.length }, { locale: $locale })}</span></header>
-      <ul class="m-0 list-none p-0" aria-label={m.text_fila_de_downloads({}, { locale: $locale })}>
+      <ul class="m-0 list-none p-0" aria-label={m.text_download_queue({}, { locale: $locale })}>
         {#each $downloadQueue as item (item.key)}
           <li class="mt-2 flex items-center gap-2.5 rounded-lg border p-2.5 {item.status === 'error' ? 'border-red-300 dark:border-red-900' : 'border-border'}">
             <div class="flex h-10 w-[34px] shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground" aria-hidden="true"><Icon icon={musicIcon} width="22" /></div>
@@ -62,8 +62,8 @@
             </div>
             {#if item.status === "error"}
               <div class="flex flex-col justify-evenly gap-1 self-stretch">
-                <Button variant="muted" size="custom" class="p-[5px]" type="button" onclick={() => retryDownload(item.key)} aria-label={m.retry_for({ title: item.title }, { locale: $locale })} title={m.text_tentar_novamente({}, { locale: $locale })}><Icon icon={retryIcon} width="20" /></Button>
-                <Button variant="muted" size="custom" class="p-[5px]" type="button" onclick={() => removeDownload(item.key)} aria-label={m.remove_for({ title: item.title }, { locale: $locale })} title={m.text_remover_da_fila({}, { locale: $locale })}><Icon icon={removeIcon} width="20" /></Button>
+                <Button variant="muted" size="custom" class="p-[5px]" type="button" onclick={() => retryDownload(item.key)} aria-label={m.retry_for({ title: item.title }, { locale: $locale })} title={m.text_try_again({}, { locale: $locale })}><Icon icon={retryIcon} width="20" /></Button>
+                <Button variant="muted" size="custom" class="p-[5px]" type="button" onclick={() => removeDownload(item.key)} aria-label={m.remove_for({ title: item.title }, { locale: $locale })} title={m.text_remove_from_queue({}, { locale: $locale })}><Icon icon={removeIcon} width="20" /></Button>
               </div>
             {/if}
           </li>
@@ -71,8 +71,8 @@
       </ul>
     </Popover>
     <Button variant="surface" size="custom" layout="block" class="w-full p-3" type="button" popovertarget="download-queue-panel" bind:element={trigger}>
-      <span class="flex items-baseline justify-between gap-2 text-[0.85rem] font-semibold">{errors === pending.length ? m.text_downloads_com_erro({}, { locale: $locale }) : m.text_baixando_musicas({}, { locale: $locale })}<small class="text-[0.65rem] font-normal text-muted-foreground">{errors ? `${m.error_count({ count: errors }, { locale: $locale })} · ` : ""}{m.queued_count({ count: pending.length }, { locale: $locale })}</small></span>
-      <span class="mt-2.5 flex items-center gap-2.5 text-[0.8rem]"><Icon icon={menuIcon} width="22" /><progress class="h-[7px] w-full appearance-none overflow-hidden rounded-lg border-0 bg-secondary accent-primary [&::-webkit-progress-bar]:rounded-lg [&::-webkit-progress-bar]:bg-secondary [&::-webkit-progress-value]:rounded-lg [&::-webkit-progress-value]:bg-primary" value={percent} max="100" aria-label={m.text_progresso_total_dos_downloads({}, { locale: $locale })}></progress><span>{percent}%</span></span>
+      <span class="flex items-baseline justify-between gap-2 text-[0.85rem] font-semibold">{errors === pending.length ? m.text_failed_downloads({}, { locale: $locale }) : m.text_downloading_songs({}, { locale: $locale })}<small class="text-[0.65rem] font-normal text-muted-foreground">{errors ? `${m.error_count({ count: errors }, { locale: $locale })} · ` : ""}{m.queued_count({ count: pending.length }, { locale: $locale })}</small></span>
+      <span class="mt-2.5 flex items-center gap-2.5 text-[0.8rem]"><Icon icon={menuIcon} width="22" /><progress class="h-[7px] w-full appearance-none overflow-hidden rounded-lg border-0 bg-secondary accent-primary [&::-webkit-progress-bar]:rounded-lg [&::-webkit-progress-bar]:bg-secondary [&::-webkit-progress-value]:rounded-lg [&::-webkit-progress-value]:bg-primary" value={percent} max="100" aria-label={m.text_total_download_progress({}, { locale: $locale })}></progress><span>{percent}%</span></span>
     </Button>
   </div>
 {/if}

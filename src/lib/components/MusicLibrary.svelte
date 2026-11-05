@@ -28,7 +28,7 @@
 
 
   const folderLabel = $derived.by(() => {
-    if (!$library) return m.text_selecione_sua_pasta_de_musicas({}, { locale: $locale });
+    if (!$library) return m.text_select_your_music_folder({}, { locale: $locale });
     const parts = $library.folder.split(/[\\/]+/).filter(Boolean);
     return `${parts.length > 2 ? ".../" : ""}${parts.slice(-2).join("/")}`;
   });
@@ -88,7 +88,7 @@
     try { await chooseMusicFolder(); } catch (cause) { error = String(cause); }
   }
   function libraryQueue() {
-    return filteredTracks.map(item => ({ id: item.path, title: item.title, subtitle: m.text_mp3_biblioteca({}, { locale: $locale }), load: (signal: AbortSignal) => loadLocalAudio(item.path, signal) }));
+    return filteredTracks.map(item => ({ id: item.path, title: item.title, subtitle: m.text_mp3_library({}, { locale: $locale }), load: (signal: AbortSignal) => loadLocalAudio(item.path, signal) }));
   }
   function toggle(track: Track) {
     if ($player.track?.id === track.path) { void togglePlayer(); return; }
@@ -104,22 +104,22 @@
 
 <svelte:window onresize={closePreferencePopovers} />
 
-<aside aria-label={m.text_biblioteca_de_musicas({}, { locale: $locale })} class="flex h-[calc(100dvh-64px)] min-h-[440px] min-w-0 flex-col rounded-xl border border-border bg-card px-4 py-5 pr-0 max-[720px]:h-full max-[720px]:min-h-0 max-[720px]:overflow-hidden">
+<aside aria-label={m.text_music_library({}, { locale: $locale })} class="flex h-[calc(100dvh-64px)] min-h-[440px] min-w-0 flex-col rounded-xl border border-border bg-card px-4 py-5 pr-0 max-[720px]:h-full max-[720px]:min-h-0 max-[720px]:overflow-hidden">
   <header class="flex items-center gap-3 border-b border-border px-1 pb-[18px]">
     <div class="min-w-0 flex-1">
-      <h2 class="mb-2 text-base font-bold">{m.text_minha_biblioteca({}, { locale: $locale })}</h2>
+      <h2 class="mb-2 text-base font-bold">{m.text_my_library({}, { locale: $locale })}</h2>
       <p class="truncate font-mono text-[0.8rem] leading-normal text-muted-foreground" title={$library?.folder}>
         {folderLabel}
       </p>
     </div>
     <Button variant="ghost" size="custom" class="h-10 w-10 shrink-0 p-0" type="button" onclick={chooseFolder} disabled={$choosingFolder || $downloading}
-      aria-label={m.text_selecionar_pasta_de_musicas({}, { locale: $locale })} title={m.text_selecionar_pasta_de_musicas({}, { locale: $locale })}>
+      aria-label={m.text_select_music_folder({}, { locale: $locale })} title={m.text_select_music_folder({}, { locale: $locale })}>
       <Icon icon={folderIcon} width="26" />
     </Button>
   </header>
 
   <div class="[&_p]:my-4 [&_p]:text-[0.85rem] [&_p]:leading-normal" aria-live="polite" aria-busy={$choosingFolder || !!preparing}>
-    {#if $choosingFolder}<p>{m.text_carregando_pasta({}, { locale: $locale })}</p>{/if}
+    {#if $choosingFolder}<p>{m.text_loading_folder({}, { locale: $locale })}</p>{/if}
     {#if error}<p class="text-red-700 dark:text-red-300" role="alert">{errorMessage(error, $locale)}</p>{/if}
     {#if $downloadNotice}<p class="text-red-700 dark:text-red-300" role="alert">{$downloadNotice}</p>{/if}
   </div>
@@ -127,15 +127,15 @@
   {#if $library}
     <div class="-mx-1 flex min-h-0 flex-1 flex-col overflow-y-auto px-1" onscroll={() => trackActions?.dismiss()}>
       <div class="sticky top-0 z-10 shrink-0 bg-card py-3 pr-4">
-        <label for="library-query" class="sr-only">{m.text_buscar_na_minha_biblioteca({}, { locale: $locale })}</label>
+        <label for="library-query" class="sr-only">{m.text_search_my_library({}, { locale: $locale })}</label>
         <div class="relative">
           <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground" aria-hidden="true"><Icon icon={searchIcon} width="18" /></span>
-          <input id="library-query" type="search" bind:value={query} placeholder={m.text_buscar_na_biblioteca({}, { locale: $locale })}
+          <input id="library-query" type="search" bind:value={query} placeholder={m.text_search_library({}, { locale: $locale })}
             class="w-full min-w-0 rounded-md border border-input bg-card py-2.5 pr-3 pl-10 text-sm focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-[3px]" />
         </div>
       </div>
       <p class="mx-1 mb-3 shrink-0 text-xs text-muted-foreground" role="status">
-        {#if searchTerm}{m.count_of({ filtered: filteredTracks.length, total: $library.tracks.length }, { locale: $locale })}{:else}{$library.tracks.length}{/if} {$library.tracks.length === 1 ? m.text_musica({}, { locale: $locale }) : m.text_musicas({}, { locale: $locale })}
+        {#if searchTerm}{m.count_of({ filtered: filteredTracks.length, total: $library.tracks.length }, { locale: $locale })}{:else}{$library.tracks.length}{/if} {$library.tracks.length === 1 ? m.text_song({}, { locale: $locale }) : m.text_songs({}, { locale: $locale })}
       </p>
       {#if filteredTracks.length}
         <ul class="shrink-0 list-none pt-0.5 pr-4 pb-2">
@@ -149,8 +149,8 @@
               <Button variant="ghost" size="custom" class="h-9 w-[34px] shrink-0 p-0" type="button" onclick={() => toggle(track)}
                 onkeydown={(event) => { if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) void trackActions.open(event, track); }}
                 disabled={preparing === track.path}
-                aria-label={m.action_track({ action: active?.id === track.path && playing ? m.text_pausar({}, { locale: $locale }) : m.text_ouvir({}, { locale: $locale }), title: track.title }, { locale: $locale })}
-                title={active?.id === track.path && playing ? m.text_pausar({}, { locale: $locale }) : m.text_ouvir({}, { locale: $locale })}>
+                aria-label={m.action_track({ action: active?.id === track.path && playing ? m.text_pause({}, { locale: $locale }) : m.text_listen({}, { locale: $locale }), title: track.title }, { locale: $locale })}
+                title={active?.id === track.path && playing ? m.text_pause({}, { locale: $locale }) : m.text_listen({}, { locale: $locale })}>
                 <Icon icon={active?.id === track.path && playing ? pauseIcon : playIcon} width="20" />
               </Button>
             </li>
@@ -159,33 +159,33 @@
       {:else}
         <div class="flex flex-1 flex-col items-center justify-center gap-3 px-3 py-8 text-center text-muted-foreground">
           <Icon icon={musicIcon} width="32" />
-          <p class="text-[0.9rem] text-foreground">{searchTerm ? m.text_nenhuma_musica_encontrada({}, { locale: $locale }) : m.text_nenhum_arquivo_mp3_nesta_pasta({}, { locale: $locale })}</p>
-          <span class="max-w-[230px] text-[0.8rem] leading-[1.6]">{searchTerm ? m.text_tente_outro_nome_ou_limpe_a_busca({}, { locale: $locale }) : m.text_escolha_outra_pasta_pelo_icone_acima({}, { locale: $locale })}</span>
+          <p class="text-[0.9rem] text-foreground">{searchTerm ? m.text_no_songs_found({}, { locale: $locale }) : m.text_no_mp3_files_in_this_folder({}, { locale: $locale })}</p>
+          <span class="max-w-[230px] text-[0.8rem] leading-[1.6]">{searchTerm ? m.text_try_another_name_or_clear_the_search({}, { locale: $locale }) : m.text_choose_another_folder_using_the_icon_above({}, { locale: $locale })}</span>
         </div>
       {/if}
     </div>
   {:else if !$choosingFolder}
     <div class="flex flex-1 flex-col items-center justify-center gap-3 px-3 py-8 text-center text-muted-foreground">
       <Icon icon={folderIcon} width="36" />
-      <p class="text-[0.9rem] text-foreground">{m.text_suas_musicas_por_aqui({}, { locale: $locale })}</p>
-      <span class="max-w-[230px] text-[0.8rem] leading-[1.6]">{m.text_selecione_uma_pasta_para_listar_e_ouvir_seus_arquivos_m({}, { locale: $locale })}</span>
+      <p class="text-[0.9rem] text-foreground">{m.text_your_music_right_here({}, { locale: $locale })}</p>
+      <span class="max-w-[230px] text-[0.8rem] leading-[1.6]">{m.text_select_a_folder_to_list_and_listen_to_your_mp3_files({}, { locale: $locale })}</span>
     </div>
   {/if}
 
   <DownloadQueue />
   <TrackActions bind:this={trackActions} onbeforechange={(track) => { if (active?.id === track.path) stop(); }} onnotice={(message) => error = message} />
 
-  <footer aria-label={m.text_sobre_e_preferencias_do_aplicativo({}, { locale: $locale })} class="mr-4 mt-5 flex shrink-0 items-center justify-between gap-3 border-t border-border px-1 pt-5">
+  <footer aria-label={m.text_about_and_app_preferences({}, { locale: $locale })} class="mr-4 mt-5 flex shrink-0 items-center justify-between gap-3 border-t border-border px-1 pt-5">
     <div class="min-w-0">
       <p class="truncate text-base font-bold text-foreground">Open Tunely</p>
       <p class="mt-0.5 text-xs text-muted-foreground">v0.0.1</p>
     </div>
-    <div class="flex shrink-0 items-center gap-1.5" role="group" aria-label={m.text_preferencias_do_aplicativo({}, { locale: $locale })}>
-      <Button type="button" onclick={toggleColorMode} aria-label={m.text_modo_escuro({}, { locale: $locale })} aria-pressed={$appearance.mode === "dark"} title={$appearance.mode === "dark" ? m.text_ativar_tema_claro({}, { locale: $locale }) : m.text_ativar_tema_escuro({}, { locale: $locale })}
+    <div class="flex shrink-0 items-center gap-1.5" role="group" aria-label={m.text_app_preferences({}, { locale: $locale })}>
+      <Button type="button" onclick={toggleColorMode} aria-label={m.text_dark_mode({}, { locale: $locale })} aria-pressed={$appearance.mode === "dark"} title={$appearance.mode === "dark" ? m.text_enable_light_mode({}, { locale: $locale }) : m.text_enable_dark_mode({}, { locale: $locale })}
         variant="subtle" size="icon">
         <Icon icon={$appearance.mode === "dark" ? sunIcon : themeIcon} width="19" />
       </Button>
-      <Button type="button" bind:element={settingsTrigger} onclick={() => settingsDialog?.showModal()} aria-haspopup="dialog" aria-controls="app-settings" aria-label={m.text_configuracoes({}, { locale: $locale })} title={m.text_configuracoes({}, { locale: $locale })}
+      <Button type="button" bind:element={settingsTrigger} onclick={() => settingsDialog?.showModal()} aria-haspopup="dialog" aria-controls="app-settings" aria-label={m.text_settings({}, { locale: $locale })} title={m.text_settings({}, { locale: $locale })}
         variant="subtle" size="icon">
         <Icon icon={settingsIcon} width="19" />
       </Button>
@@ -194,33 +194,33 @@
   <Modal id="app-settings" bind:element={settingsDialog} size="wide" onscroll={closePreferencePopovers} onclose={() => { closePreferencePopovers(); settingsTrigger?.focus(); }} aria-labelledby="app-settings-title"
     class="max-h-[calc(100dvh-48px)] overflow-y-auto shadow-[0_8px_28px_#17202a26]">
     <header class="mb-6 flex items-center justify-between gap-4">
-      <h3 id="app-settings-title" class="text-lg font-bold">{m.text_configuracoes({}, { locale: $locale })}</h3>
-      <Button type="button" onclick={() => settingsDialog?.close()} aria-label={m.text_fechar_configuracoes({}, { locale: $locale })} title={m.text_fechar_configuracoes({}, { locale: $locale })}
+      <h3 id="app-settings-title" class="text-lg font-bold">{m.text_settings({}, { locale: $locale })}</h3>
+      <Button type="button" onclick={() => settingsDialog?.close()} aria-label={m.text_close_settings({}, { locale: $locale })} title={m.text_close_settings({}, { locale: $locale })}
         variant="muted" size="icon" class="shrink-0">
         <Icon icon={closeIcon} width="20" />
       </Button>
     </header>
     <div class="flex items-center justify-between gap-4">
       <div>
-        <p class="text-sm text-foreground">{m.text_tema_de_cor({}, { locale: $locale })}</p>
+        <p class="text-sm text-foreground">{m.text_color_theme({}, { locale: $locale })}</p>
         <p class="mt-0.5 text-xs text-muted-foreground">{palettes.find(palette => palette.id === $appearance.palette)?.label($locale)}</p>
       </div>
-      <Button type="button" bind:element={themeTrigger} popovertarget="theme-options" aria-label={m.text_selecionar_tema_de_cor({}, { locale: $locale })} title={m.text_selecionar_tema_de_cor({}, { locale: $locale })}
+      <Button type="button" bind:element={themeTrigger} popovertarget="theme-options" aria-label={m.text_select_color_theme({}, { locale: $locale })} title={m.text_select_color_theme({}, { locale: $locale })}
         variant="subtle" size="icon" class="shrink-0">
         <span class="size-[18px] rounded-full bg-primary" aria-hidden="true"></span>
       </Button>
     </div>
     <div class="mt-3 flex items-center justify-between gap-4 border-t border-border pt-3">
       <div>
-        <p class="text-sm text-foreground">{m.text_idioma({}, { locale: $locale })}</p>
+        <p class="text-sm text-foreground">{m.text_language({}, { locale: $locale })}</p>
         <p class="mt-0.5 text-xs text-muted-foreground">{languages.find(language => language.id === $locale)?.label}</p>
       </div>
-      <Button type="button" bind:element={languageTrigger} popovertarget="language-options" aria-label={m.text_selecionar_idioma({}, { locale: $locale })} title={m.text_selecionar_idioma({}, { locale: $locale })}
+      <Button type="button" bind:element={languageTrigger} popovertarget="language-options" aria-label={m.text_select_language({}, { locale: $locale })} title={m.text_select_language({}, { locale: $locale })}
         variant="subtle" size="icon" class="shrink-0">
         <Icon icon={languageIcon} width="19" />
       </Button>
     </div>
-    <Popover id="theme-options" bind:element={themePanel} ontoggle={(event) => positionOptions(event, themeTrigger, themePanel)} role="group" aria-label={m.text_temas_de_cor_disponiveis({}, { locale: $locale })}
+    <Popover id="theme-options" bind:element={themePanel} ontoggle={(event) => positionOptions(event, themeTrigger, themePanel)} role="group" aria-label={m.text_available_color_themes({}, { locale: $locale })}
       class="inset-auto w-[min(200px,calc(100vw-32px))] rounded-lg p-1.5 shadow-[0_8px_28px_#17202a26]">
       {#each palettes as palette}
         <Button type="button" aria-pressed={$appearance.palette === palette.id} onclick={() => { selectPalette(palette.id); closePreferencePopovers(); themeTrigger?.focus(); }}
@@ -231,7 +231,7 @@
         </Button>
       {/each}
     </Popover>
-    <Popover id="language-options" bind:element={languagePanel} ontoggle={(event) => positionOptions(event, languageTrigger, languagePanel)} role="group" aria-label={m.text_idiomas_disponiveis({}, { locale: $locale })}
+    <Popover id="language-options" bind:element={languagePanel} ontoggle={(event) => positionOptions(event, languageTrigger, languagePanel)} role="group" aria-label={m.text_available_languages({}, { locale: $locale })}
       class="inset-auto w-[min(200px,calc(100vw-32px))] rounded-lg p-1.5 shadow-[0_8px_28px_#17202a26]">
       {#each languages as language}
         <Button type="button" aria-pressed={$locale === language.id} onclick={() => selectLanguage(language.id)}

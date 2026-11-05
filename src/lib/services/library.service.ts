@@ -45,7 +45,7 @@ export function chooseMusicFolder(): Promise<Library | null> {
   revision += 1;
   selecting.set(true);
   selection = initializeMusicLibrary().catch(() => {}).then(() =>
-    invoke<Library | null>("choose_music_folder", { title: m.text_selecionar_pasta_de_musicas() }),
+    invoke<Library | null>("choose_music_folder", { title: m.text_select_music_folder() }),
   )
     .then((chosen) => {
       if (chosen) { currentLibrary.set(chosen); saveFolder(chosen.folder); }
