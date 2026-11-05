@@ -18,6 +18,8 @@ cd "$work/lame-3.100"
 make -j"${JOBS:-4}"
 make install
 cd "$work/ffmpeg-8.0"
+# yt-dlp passes -movflags even for MP3 output. Keep MP4/iPod muxers and
+# the AAC bitstream filter for its conversion and M4A fixup steps.
 PKG_CONFIG_PATH="$prefix/lib/pkgconfig" ./configure \
   --disable-everything --disable-autodetect --disable-network \
   --disable-doc --disable-debug --disable-ffplay --disable-avdevice --disable-swscale \
@@ -25,7 +27,7 @@ PKG_CONFIG_PATH="$prefix/lib/pkgconfig" ./configure \
   --enable-encoder=libmp3lame \
   --enable-decoder=aac,opus,vorbis,mp3,flac,pcm_s16le,pcm_s24le,pcm_f32le \
   --enable-demuxer=mov,matroska,ogg,mp3,aac,flac,wav \
-  --enable-muxer=mp3 --enable-protocol=file,pipe \
+  --enable-muxer=mp3,mp4,ipod --enable-bsf=aac_adtstoasc --enable-protocol=file,pipe \
   --enable-filter=aresample,aformat,anull --enable-parser=aac,opus,vorbis,mpegaudio,flac \
   --extra-cflags="-I$prefix/include" --extra-ldflags="-L$prefix/lib"
 make -j"${JOBS:-4}" ffmpeg ffprobe

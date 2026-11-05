@@ -70,7 +70,8 @@ async function setupFfmpeg() {
   await execute("bash", [fileURLToPath(new URL("./build-ffmpeg.sh", import.meta.url))], {
     maxBuffer: 16 * 1024 * 1024,
   });
-  console.log("FFmpeg/ffprobe enxutos preparados.");
+  await execute(process.execPath, [fileURLToPath(new URL("./check-media-tools.mjs", import.meta.url))]);
+  console.log("FFmpeg/ffprobe enxutos preparados e conversão validada.");
 }
 
 if (process.platform !== "linux" || process.arch !== "x64") {

@@ -12,7 +12,8 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "tauri": "tauri",
-    "setup:tools": "node scripts/setup-tools.mjs"
+    "setup:tools": "node scripts/setup-tools.mjs",
+    "check:tools": "node scripts/check-media-tools.mjs"
   },
   "license": "MIT",
   "dependencies": {
