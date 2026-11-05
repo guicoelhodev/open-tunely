@@ -36,7 +36,7 @@ A desktop music downloader and player built with Tauri, Svelte, and Rust.
 - Linux x64
 - Node.js and npm
 - The Rust toolchain and [Tauri's Linux prerequisites](https://v2.tauri.app/start/prerequisites/)
-- Internet access and `tar` with XZ support and `unzip` for the media tool setup
+- Internet access, `curl`, `tar` with XZ support, `unzip`, GCC, make, pkg-config and NASM for media tool setup
 
 ### Run locally
 
@@ -48,7 +48,9 @@ npm run setup:tools
 npm run dev
 ```
 
-The setup script downloads pinned media tool builds, checks their SHA-256 hashes, and stores them in `src-tauri/binaries/`. Existing copies are reused when their checksums match.
+The setup script downloads pinned yt-dlp and Deno builds and compiles audio-only FFmpeg/ffprobe from checksum-verified FFmpeg 8.0 and LAME 3.100 sources. Tools are stored in `src-tauri/binaries/`. FFmpeg is rebuilt on each setup; compiler dependencies are needed only on the build machine.
+
+To build only FFmpeg/ffprobe, run `bash scripts/build-ffmpeg.sh`. It keeps AAC, Opus, Vorbis, MP3, FLAC and basic PCM decoding, MP3 encoding and local-file processing. Media libraries are linked statically. Network access and video decoding are disabled; yt-dlp handles downloads. The same recipe targets Windows through MSYS2 MINGW64, but Windows execution and integration are not yet validated. Use `FFMPEG_OUTPUT` to choose a separate output directory and `JOBS` to control build parallelism. Build configuration and upstream license texts accompany the output. Linux builds should run on the oldest supported distribution to avoid requiring a newer glibc.
 
 `npm run dev` opens the Tauri desktop window. Search, playback, and filesystem operations require that window. For frontend-only visual work, use `npm run dev:web`.
 
