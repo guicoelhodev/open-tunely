@@ -1,0 +1,49 @@
+name: Linux packages
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      APPIMAGE_EXTRACT_AND_RUN: '1'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install native build and playback dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config nasm curl wget file unzip patchelf \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            libssl-dev libfuse2 libgstreamer1.0-dev \
+            libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-good \
+            gstreamer1.0-plugins-bad gstreamer1.0-libav
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+      - run: npm ci
+      - run: npm run setup:tools
+      - name: Build Debian and AppImage packages
+        run: npm run tauri build -- --bundles deb,appimage
+      - name: Check packaged tools and media support
+        run: bash scripts/check-appimage.sh src-tauri/target/release/bundle/appimage/*.AppImage
+      - uses: actions/upload-artifact@v6
+        with:
+          name: open-tunely-linux-x64
+          if-no-files-found: error
+          compression-level: 0
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
