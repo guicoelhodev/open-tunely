@@ -70,8 +70,9 @@
   }
 </script>
 
-<div class="mx-auto grid max-w-[1180px] grid-cols-[minmax(0,1fr)_330px] gap-8 px-6 py-8 max-[720px]:grid-cols-[minmax(0,1fr)] max-[720px]:gap-5 max-[720px]:px-4 max-[720px]:py-5">
-<main class="flex min-w-0 flex-col pt-6 max-[720px]:pt-0">
+<div class="mx-auto grid max-w-[1180px] grid-cols-[minmax(0,1fr)_330px] gap-8 px-6 py-8 max-[720px]:h-dvh max-[720px]:overflow-hidden max-[720px]:grid-cols-[minmax(0,1fr)] max-[720px]:grid-rows-[auto_minmax(0,1fr)_auto] max-[720px]:gap-5 max-[720px]:px-4 max-[720px]:py-5">
+<main class="flex min-w-0 flex-col pt-6 max-[720px]:contents">
+  <div class="max-[720px]:order-1 max-[720px]:min-w-0 max-[720px]:max-h-[40dvh] max-[720px]:overflow-y-auto">
   <form onsubmit={search}>
     <label class="mb-2 block font-semibold" for="song-query">{m.text_encontre_sua_proxima_musica({}, { locale: $locale })}</label>
     <div class="flex flex-wrap gap-3">
@@ -125,7 +126,12 @@
   <div aria-live="polite">
     {#if downloadError}<p class="my-4 leading-[1.6] text-red-700 dark:text-red-300" role="alert">{errorMessage(downloadError, $locale)}</p>{/if}
   </div>
-<Player />
+  </div>
+  <div class="mt-auto max-[720px]:order-3 max-[720px]:mt-0 max-[720px]:min-w-0">
+    <Player />
+  </div>
 </main>
-<MusicLibrary />
+<div class="min-w-0 max-[720px]:order-2 max-[720px]:min-h-0">
+  <MusicLibrary />
+</div>
 </div>

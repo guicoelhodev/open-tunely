@@ -104,7 +104,7 @@
 
 <svelte:window onresize={closePreferencePopovers} />
 
-<aside aria-label={m.text_biblioteca_de_musicas({}, { locale: $locale })} class="flex h-[calc(100dvh-64px)] min-h-[440px] min-w-0 flex-col rounded-xl border border-border bg-card px-4 py-5 pr-0 max-[720px]:h-[min(580px,75dvh)] max-[720px]:min-h-[340px]">
+<aside aria-label={m.text_biblioteca_de_musicas({}, { locale: $locale })} class="flex h-[calc(100dvh-64px)] min-h-[440px] min-w-0 flex-col rounded-xl border border-border bg-card px-4 py-5 pr-0 max-[720px]:h-full max-[720px]:min-h-0 max-[720px]:overflow-hidden">
   <header class="flex items-center gap-3 border-b border-border px-1 pb-[18px]">
     <div class="min-w-0 flex-1">
       <h2 class="mb-2 text-base font-bold">{m.text_minha_biblioteca({}, { locale: $locale })}</h2>
