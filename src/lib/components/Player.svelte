@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "./ui/Button.svelte";
   import { onMount } from "svelte";
   import Icon from "@iconify/svelte";
   import playIcon from "@iconify-icons/andrsrxn/play";
@@ -33,12 +34,12 @@
       {#if $player.error}<p class="text-xs text-red-700 dark:text-red-300" role="alert">{$player.error}</p>{/if}
     </div>
     <div class="flex items-center gap-3 text-primary">
-      <button class="rounded-md p-2 disabled:opacity-40" aria-label="Anterior" disabled={!$player.track || $player.loading} onclick={() => stepPlayer(-1)}><Icon icon={previousIcon} width="20" /></button>
-      <button class="rounded-full bg-secondary p-3 text-secondary-foreground disabled:opacity-40" aria-label={$player.playing ? "Pausar" : "Reproduzir"} disabled={!$player.track || $player.loading} onclick={togglePlayer}>
+      <Button variant="ghost" size="custom" class="p-2" aria-label="Anterior" disabled={!$player.track || $player.loading} onclick={() => stepPlayer(-1)}><Icon icon={previousIcon} width="20" /></Button>
+      <Button variant="soft" size="custom" round class="p-3" aria-label={$player.playing ? "Pausar" : "Reproduzir"} disabled={!$player.track || $player.loading} onclick={togglePlayer}>
         {#if $player.loading}<span class="block size-5 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true"></span>{:else}<Icon icon={$player.playing ? pauseIcon : playIcon} width="20" />{/if}
-      </button>
-      <button class="rounded-md p-2 disabled:opacity-40" aria-label="Próxima" disabled={!$player.track || $player.loading} onclick={() => stepPlayer(1)}><Icon icon={nextIcon} width="20" /></button>
-      <button class="rounded-md p-2 {$player.shuffle ? 'bg-accent' : 'text-muted-foreground'}" aria-label="Reprodução aleatória" aria-pressed={$player.shuffle} onclick={() => player.update(s => ({ ...s, shuffle: !s.shuffle }))}><Icon icon={shuffleIcon} width="20" /></button>
+      </Button>
+      <Button variant="ghost" size="custom" class="p-2" aria-label="Próxima" disabled={!$player.track || $player.loading} onclick={() => stepPlayer(1)}><Icon icon={nextIcon} width="20" /></Button>
+      <Button variant={$player.shuffle ? "soft" : "muted"} size="custom" class="p-2" aria-label="Reprodução aleatória" aria-pressed={$player.shuffle} onclick={() => player.update(s => ({ ...s, shuffle: !s.shuffle }))}><Icon icon={shuffleIcon} width="20" /></Button>
     </div>
     <label class="flex items-center gap-2 text-muted-foreground"><Icon icon={volumeIcon} width="20" /><span class="sr-only">Volume</span><input class="w-24 accent-primary" type="range" min="0" max="1" step="0.01" bind:value={volume} /></label>
   </div>

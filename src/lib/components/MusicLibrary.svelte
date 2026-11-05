@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "./ui/Button.svelte";
   import DownloadQueue from "./DownloadQueue.svelte";
   import TrackActions from "./TrackActions.svelte";
   import Modal from "./ui/Modal.svelte";
@@ -82,7 +83,7 @@
     try { await chooseMusicFolder(); } catch (cause) { error = String(cause); }
   }
   function libraryQueue() {
-    return ($library?.tracks ?? []).map(item => ({ id: item.path, title: item.title, subtitle: "MP3 · Biblioteca", load: (signal: AbortSignal) => loadLocalAudio(item.path, signal) }));
+    return filteredTracks.map(item => ({ id: item.path, title: item.title, subtitle: "MP3 · Biblioteca", load: (signal: AbortSignal) => loadLocalAudio(item.path, signal) }));
   }
   function toggle(track: Track) {
     if ($player.track?.id === track.path) { void togglePlayer(); return; }
@@ -106,10 +107,10 @@
         {folderLabel}
       </p>
     </div>
-    <button class="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-md bg-transparent p-0 text-primary hover:bg-secondary disabled:cursor-wait disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-[3px]" type="button" onclick={chooseFolder} disabled={$choosingFolder || $downloading}
+    <Button variant="ghost" size="custom" class="h-10 w-10 shrink-0 p-0" type="button" onclick={chooseFolder} disabled={$choosingFolder || $downloading}
       aria-label="Selecionar pasta de músicas" title="Selecionar pasta de músicas">
       <Icon icon={folderIcon} width="26" />
-    </button>
+    </Button>
   </header>
 
   <div class="[&_p]:my-4 [&_p]:text-[0.85rem] [&_p]:leading-normal" aria-live="polite" aria-busy={$choosingFolder || !!preparing}>
@@ -134,19 +135,19 @@
       {#if filteredTracks.length}
         <ul class="shrink-0 list-none pt-0.5 pr-4 pb-2">
           {#each filteredTracks as track (track.path)}
-            <li class="mb-2.5 flex items-center gap-2.5 rounded-lg border p-2.5 {active?.id === track.path ? 'border-primary bg-secondary' : 'border-border'}" oncontextmenu={(event) => trackActions.open(event, track)}>
+            <li class="mb-2.5 flex items-center gap-2.5 rounded-lg border p-2.5 {active?.id === track.path ? 'border-primary bg-primary/5' : 'border-border'}" oncontextmenu={(event) => trackActions.open(event, track)}>
               <div class="flex h-[46px] w-[42px] shrink-0 items-center justify-center rounded-md bg-primary/7 text-primary" aria-hidden="true"><Icon icon={musicIcon} width="24" /></div>
               <div class="min-w-0 flex-1">
                 <h3 class="mb-1.5 truncate text-sm font-semibold" title={track.filename}>{track.title}</h3>
                 <p class="text-xs text-muted-foreground">MP3 <span aria-hidden="true">·</span> {fileSize(track.size)}</p>
               </div>
-              <button class="inline-flex h-9 w-[34px] shrink-0 cursor-pointer items-center justify-center rounded-md bg-transparent p-0 text-primary hover:bg-secondary disabled:cursor-wait disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-[3px]" type="button" onclick={() => toggle(track)}
+              <Button variant="ghost" size="custom" class="h-9 w-[34px] shrink-0 p-0" type="button" onclick={() => toggle(track)}
                 onkeydown={(event) => { if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) void trackActions.open(event, track); }}
                 disabled={preparing === track.path}
                 aria-label={`${active?.id === track.path && playing ? "Pausar" : "Ouvir"} ${track.title}`}
                 title={active?.id === track.path && playing ? "Pausar" : "Ouvir"}>
                 <Icon icon={active?.id === track.path && playing ? pauseIcon : playIcon} width="20" />
-              </button>
+              </Button>
             </li>
           {/each}
         </ul>
@@ -175,65 +176,65 @@
       <p class="mt-0.5 text-xs text-muted-foreground">v0.0.1</p>
     </div>
     <div class="flex shrink-0 items-center gap-1.5" role="group" aria-label="Preferências do aplicativo">
-      <button type="button" onclick={toggleColorMode} aria-label="Modo escuro" aria-pressed={$appearance.mode === "dark"} title={$appearance.mode === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
-        class="inline-flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-primary/7 text-primary hover:bg-primary/12 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-[3px]">
+      <Button type="button" onclick={toggleColorMode} aria-label="Modo escuro" aria-pressed={$appearance.mode === "dark"} title={$appearance.mode === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+        variant="subtle" size="icon">
         <Icon icon={$appearance.mode === "dark" ? sunIcon : themeIcon} width="19" />
-      </button>
-      <button type="button" bind:this={settingsTrigger} onclick={() => settingsDialog?.showModal()} aria-haspopup="dialog" aria-controls="app-settings" aria-label="Configurações" title="Configurações"
-        class="inline-flex size-9 cursor-pointer items-center justify-center rounded-md border border-border bg-primary/7 text-primary hover:bg-primary/12 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-[3px]">
+      </Button>
+      <Button type="button" bind:element={settingsTrigger} onclick={() => settingsDialog?.showModal()} aria-haspopup="dialog" aria-controls="app-settings" aria-label="Configurações" title="Configurações"
+        variant="subtle" size="icon">
         <Icon icon={settingsIcon} width="19" />
-      </button>
+      </Button>
     </div>
   </footer>
   <Modal id="app-settings" bind:element={settingsDialog} size="wide" onscroll={closePreferencePopovers} onclose={() => { closePreferencePopovers(); settingsTrigger?.focus(); }} aria-labelledby="app-settings-title"
     class="max-h-[calc(100dvh-48px)] overflow-y-auto shadow-[0_8px_28px_#17202a26]">
     <header class="mb-6 flex items-center justify-between gap-4">
       <h3 id="app-settings-title" class="text-lg font-bold">Configurações</h3>
-      <button type="button" onclick={() => settingsDialog?.close()} aria-label="Fechar configurações" title="Fechar configurações"
-        class="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-secondary focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-[3px]">
+      <Button type="button" onclick={() => settingsDialog?.close()} aria-label="Fechar configurações" title="Fechar configurações"
+        variant="muted" size="icon" class="shrink-0">
         <Icon icon={closeIcon} width="20" />
-      </button>
+      </Button>
     </header>
     <div class="flex items-center justify-between gap-4">
       <div>
         <p class="text-sm text-foreground">Tema de cor</p>
         <p class="mt-0.5 text-xs text-muted-foreground">{palettes.find(palette => palette.id === $appearance.palette)?.label}</p>
       </div>
-      <button type="button" bind:this={themeTrigger} popovertarget="theme-options" aria-label="Selecionar tema de cor" title="Selecionar tema de cor"
-        class="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md border border-border bg-muted hover:bg-secondary focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-[3px]">
+      <Button type="button" bind:element={themeTrigger} popovertarget="theme-options" aria-label="Selecionar tema de cor" title="Selecionar tema de cor"
+        variant="subtle" size="icon" class="shrink-0">
         <span class="size-[18px] rounded-full bg-primary" aria-hidden="true"></span>
-      </button>
+      </Button>
     </div>
     <div class="mt-3 flex items-center justify-between gap-4 border-t border-border pt-3">
       <div>
         <p class="text-sm text-foreground">Idioma</p>
         <p class="mt-0.5 text-xs text-muted-foreground">{languages.find(language => language.id === selectedLanguage)?.label}</p>
       </div>
-      <button type="button" bind:this={languageTrigger} popovertarget="language-options" aria-label="Selecionar idioma" title="Selecionar idioma"
-        class="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-md border border-border bg-muted text-muted-foreground hover:bg-secondary focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-[3px]">
+      <Button type="button" bind:element={languageTrigger} popovertarget="language-options" aria-label="Selecionar idioma" title="Selecionar idioma"
+        variant="subtle" size="icon" class="shrink-0">
         <Icon icon={languageIcon} width="19" />
-      </button>
+      </Button>
     </div>
     <Popover id="theme-options" bind:element={themePanel} ontoggle={(event) => positionOptions(event, themeTrigger, themePanel)} role="group" aria-label="Temas de cor disponíveis"
       class="inset-auto w-[min(200px,calc(100vw-32px))] rounded-lg p-1.5 shadow-[0_8px_28px_#17202a26]">
       {#each palettes as palette}
-        <button type="button" aria-pressed={$appearance.palette === palette.id} onclick={() => { selectPalette(palette.id); closePreferencePopovers(); themeTrigger?.focus(); }}
-          class="flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-foreground hover:bg-secondary aria-pressed:bg-muted focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-[-3px]">
+        <Button type="button" aria-pressed={$appearance.palette === palette.id} onclick={() => { selectPalette(palette.id); closePreferencePopovers(); themeTrigger?.focus(); }}
+          variant="option" size="md" layout="menu" class="w-full">
           <span class="size-[18px] shrink-0 rounded-full" style:background-color={$appearance.mode === "dark" ? palette.darkColor : palette.color} aria-hidden="true"></span>
           <span class="flex-1">{palette.label}</span>
           {#if $appearance.palette === palette.id}<Icon icon={checkIcon} width="17" />{/if}
-        </button>
+        </Button>
       {/each}
     </Popover>
     <Popover id="language-options" bind:element={languagePanel} ontoggle={(event) => positionOptions(event, languageTrigger, languagePanel)} role="group" aria-label="Idiomas disponíveis"
       class="inset-auto w-[min(200px,calc(100vw-32px))] rounded-lg p-1.5 shadow-[0_8px_28px_#17202a26]">
       {#each languages as language}
-        <button type="button" aria-pressed={selectedLanguage === language.id} onclick={() => selectLanguage(language.id)}
-          class="flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm text-foreground hover:bg-secondary aria-pressed:bg-muted focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-[-3px]">
+        <Button type="button" aria-pressed={selectedLanguage === language.id} onclick={() => selectLanguage(language.id)}
+          variant="option" size="md" layout="menu" class="w-full">
           <span class="text-xl leading-none" aria-hidden="true">{language.flag}</span>
           <span class="flex-1">{language.label}</span>
           {#if selectedLanguage === language.id}<Icon icon={checkIcon} width="17" />{/if}
-        </button>
+        </Button>
       {/each}
     </Popover>
   </Modal>

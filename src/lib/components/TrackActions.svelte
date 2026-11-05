@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "./ui/Button.svelte";
   import Icon from "@iconify/svelte";
   import Popover from "./ui/Popover.svelte";
   import Modal from "./ui/Modal.svelte";
@@ -108,8 +109,8 @@
 <svelte:window onresize={closeMenu} onblur={closeMenu} onpointerdown={outsidePointer} onkeydown={escapeMenu} />
 
 <Popover class="inset-auto w-[min(144px,calc(100vw-32px))] rounded-md p-1 shadow-[0_8px_28px_#17202a26] {keyboardFocus ? '' : 'outline-none [&_button]:outline-none'}" bind:element={menu} popover="manual" role="menu" tabindex={-1} aria-label="Ações da música" onkeydown={menuKeys} onpointerdown={() => keyboardFocus = false}>
-  <button class="flex cursor-pointer items-center bg-transparent text-foreground hover:bg-secondary focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50 w-full gap-2 rounded-sm px-[9px] py-[7px] text-left text-[0.8rem]" type="button" role="menuitem" onclick={() => edit("rename")}><Icon icon={editIcon} width="16" />Renomear</button>
-  <button class="flex cursor-pointer items-center focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50 w-full gap-2 rounded-sm px-[9px] py-[7px] text-left text-[0.8rem] mt-0.5 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60" type="button" role="menuitem" onclick={() => edit("delete")}><Icon icon={trashIcon} width="16" />Excluir</button>
+  <Button variant="option" size="custom" layout="menu" class="w-full px-[9px] py-[7px] text-[0.8rem]" type="button" role="menuitem" onclick={() => edit("rename")}><Icon icon={editIcon} width="16" />Renomear</Button>
+  <Button variant="danger" size="custom" layout="menu" class="mt-0.5 w-full px-[9px] py-[7px] text-[0.8rem]" type="button" role="menuitem" onclick={() => edit("delete")}><Icon icon={trashIcon} width="16" />Excluir</Button>
 </Popover>
 
 <Modal bind:element={dialog} oncancel={(event) => { if (busy) event.preventDefault(); }} onclose={() => origin?.focus()} aria-labelledby="track-action-title">
@@ -124,10 +125,10 @@
     {/if}
     {#if error}<p class="my-4 text-[0.85rem] leading-[1.6] text-red-700 dark:text-red-300 [overflow-wrap:anywhere]" role="alert">{error}</p>{/if}
     <div class="mt-5 flex justify-end gap-2">
-      <button class="flex cursor-pointer items-center gap-2.5 rounded-md bg-transparent px-3 py-2.5 text-foreground hover:bg-secondary focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50" type="button" onclick={cancel} disabled={busy}>Cancelar</button>
-      <button class="flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2.5 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-50 {action === 'delete' ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/60' : 'bg-primary text-primary-foreground hover:bg-primary/90'}" type="submit" disabled={busy || (action === "rename" && !name.trim())}>
+      <Button variant="muted" type="button" onclick={cancel} disabled={busy}>Cancelar</Button>
+      <Button variant={action === "delete" ? "danger" : "primary"} type="submit" disabled={busy || (action === "rename" && !name.trim())}>
         {busy ? "Aguarde…" : action === "rename" ? "Salvar" : "Excluir"}
-      </button>
+      </Button>
     </div>
   </form>
 </Modal>

@@ -12,7 +12,7 @@ type Appearance = { palette: Palette; mode: "light" | "dark" };
 
 function initialAppearance(): Appearance {
   const root = typeof document !== "undefined" ? document.documentElement : undefined;
-  const palette = palettes.find(item => item.id === root?.dataset.theme)?.id ?? "indigo";
+  const palette = palettes.find(item => item.id === root?.dataset.theme)?.id ?? "cyan";
   return { palette, mode: root?.classList.contains("dark") ? "dark" : "light" };
 }
 

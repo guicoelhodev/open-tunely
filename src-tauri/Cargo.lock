@@ -794,6 +794,7 @@ name = "downloader_mp3"
 version = "0.1.0"
 dependencies = [
  "libc",
+ "regex",
  "serde",
  "serde_json",
  "tauri",

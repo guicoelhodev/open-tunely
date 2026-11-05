@@ -1,10 +1,11 @@
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
     io::Read,
     path::PathBuf,
     process::{Child, Command, Output, Stdio},
     sync::{
-        Arc, Mutex,
+        Arc, LazyLock, Mutex,
         atomic::{AtomicBool, Ordering},
     },
     time::{Duration, Instant},
@@ -255,11 +256,72 @@ struct Song {
     channel: Option<String>,
 }
 
-fn search_with_ytdlp(binary: PathBuf, query: &str) -> Result<Song, String> {
+fn search_target(query: &str) -> Result<String, String> {
+    let query = query.trim();
+    if query.is_empty() || query.chars().count() > 300 {
+        return Err("Informe um nome, artista ou URL entre 1 e 300 caracteres.".into());
+    }
+    static URL_PREFIX: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(
+            r"(?i)^(?:[a-z][a-z0-9+.-]*://|(?:(?:www|m|music)\.)?(?:youtube\.com|youtu\.be)(?:[/?#]|$))",
+        )
+        .expect("A expressão de detecção de URL deve ser válida")
+    });
+    if !URL_PREFIX.is_match(query) {
+        return Ok(format!("ytsearch1:{query}"));
+    }
+
+    let invalid_url = "Informe um link válido de um vídeo do YouTube.";
+    if query.chars().any(char::is_whitespace) {
+        return Err(invalid_url.into());
+    }
+    let address = if query.contains("://") {
+        query.to_string()
+    } else {
+        format!("https://{query}")
+    };
+    let url = tauri::Url::parse(&address).map_err(|_| invalid_url)?;
+    if !matches!(url.scheme(), "http" | "https")
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.port().is_some()
+    {
+        return Err(invalid_url.into());
+    }
+
+    let path = url.path().trim_end_matches('/');
+    let id = match url.host_str() {
+        Some("youtu.be" | "www.youtu.be") => path.strip_prefix('/').map(str::to_string),
+        Some("youtube.com" | "www.youtube.com" | "m.youtube.com" | "music.youtube.com") => {
+            if path == "/watch" {
+                let mut ids = url.query_pairs().filter(|(key, _)| key == "v");
+                let id = ids.next().map(|(_, value)| value.into_owned());
+                if ids.next().is_some() {
+                    return Err(invalid_url.into());
+                }
+                id
+            } else {
+                ["/shorts/", "/embed/", "/live/"]
+                    .iter()
+                    .find_map(|prefix| path.strip_prefix(*prefix).map(str::to_string))
+            }
+        }
+        _ => None,
+    }
+    .filter(|id| valid_video_id(id))
+    .ok_or(invalid_url)?;
+
+    // Always resolve one video, without playlist, tracking or timestamp parameters.
+    Ok(format!("https://www.youtube.com/watch?v={id}"))
+}
+
+fn search_with_ytdlp(binary: PathBuf, target: &str) -> Result<Song, String> {
     let output = Command::new(binary)
         .args([
             "--ignore-config",
             "--no-plugin-dirs",
+            "--no-js-runtimes",
+            "--no-playlist",
             "--flat-playlist",
             "--skip-download",
             "--dump-json",
@@ -271,7 +333,7 @@ fn search_with_ytdlp(binary: PathBuf, query: &str) -> Result<Song, String> {
             "1",
             "--",
         ])
-        .arg(format!("ytsearch1:{query}"))
+        .arg(target)
         .output()
         .map_err(|error| format!("Não foi possível executar o yt-dlp: {error}"))?;
     if !output.status.success() {
@@ -290,7 +352,7 @@ fn parse_song(output: &[u8]) -> Result<Song, String> {
     let line = text
         .lines()
         .find(|line| !line.trim().is_empty())
-        .ok_or_else(|| "Nenhuma música encontrada. Tente outro nome.".to_string())?;
+        .ok_or_else(|| "Nenhuma música encontrada. Tente outro nome ou link.".to_string())?;
     let song: Song = serde_json::from_str(line)
         .map_err(|_| "O yt-dlp retornou dados inesperados.".to_string())?;
     if song.id.trim().is_empty() || song.title.trim().is_empty() {
@@ -301,12 +363,9 @@ fn parse_song(output: &[u8]) -> Result<Song, String> {
 
 #[tauri::command]
 async fn search_song(app: tauri::AppHandle, query: String) -> Result<Song, String> {
-    let query = query.trim().to_string();
-    if query.is_empty() || query.chars().count() > 300 {
-        return Err("Informe uma busca entre 1 e 300 caracteres.".into());
-    }
+    let target = search_target(&query)?;
     let binary = tool_binary(&app)?;
-    tauri::async_runtime::spawn_blocking(move || search_with_ytdlp(binary, &query))
+    tauri::async_runtime::spawn_blocking(move || search_with_ytdlp(binary, &target))
         .await
         .map_err(|error| format!("A pesquisa foi interrompida: {error}"))?
 }
@@ -452,7 +511,80 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_preview_url, parse_song, valid_video_id};
+    use super::{parse_preview_url, parse_song, search_target, valid_video_id};
+
+    #[test]
+    fn search_keeps_names_and_artists_as_text_queries() {
+        for query in [
+            "Djavan — Oceano",
+            "Música com acentuação",
+            "--format bestaudio",
+            "música sobre youtube.com",
+        ] {
+            assert_eq!(
+                search_target(&format!("  {query}  ")).unwrap(),
+                format!("ytsearch1:{query}")
+            );
+        }
+    }
+
+    #[test]
+    fn search_resolves_youtube_video_urls_without_playlist_parameters() {
+        for address in [
+            "https://www.youtube.com/watch?v=P-lxOj0XpEE",
+            "https://youtube.com/watch?list=PLtest&v=P-lxOj0XpEE&index=2&t=42s",
+            "https://youtu.be/P-lxOj0XpEE?si=shared&t=42",
+            "https://www.youtu.be/P-lxOj0XpEE/",
+            "https://m.youtube.com/watch?v=P-lxOj0XpEE#t=42",
+            "https://music.youtube.com/watch?v=P-lxOj0XpEE&list=PLtest",
+            "https://www.youtube.com/shorts/P-lxOj0XpEE?feature=share",
+            "https://www.youtube.com/embed/P-lxOj0XpEE",
+            "https://www.youtube.com/live/P-lxOj0XpEE?si=shared",
+            "youtube.com/watch?v=P-lxOj0XpEE",
+            "www.youtube.com/watch?v=P-lxOj0XpEE",
+            "youtu.be/P-lxOj0XpEE",
+            "http://youtube.com/watch?v=P-lxOj0XpEE",
+            "HTTPS://WWW.YOUTUBE.COM/watch?v=P-lxOj0XpEE",
+        ] {
+            assert_eq!(
+                search_target(&format!("  {address}  ")).unwrap(),
+                "https://www.youtube.com/watch?v=P-lxOj0XpEE",
+                "{address}"
+            );
+        }
+    }
+
+    #[test]
+    fn search_rejects_invalid_and_non_youtube_video_links() {
+        for address in [
+            "https://example.com/watch?v=P-lxOj0XpEE",
+            "https://youtube.com.evil.test/watch?v=P-lxOj0XpEE",
+            "https://youtube.com@evil.test/watch?v=P-lxOj0XpEE",
+            "https://user@youtube.com/watch?v=P-lxOj0XpEE",
+            "https://youtube.com:8443/watch?v=P-lxOj0XpEE",
+            "ftp://youtube.com/watch?v=P-lxOj0XpEE",
+            "file:///tmp/audio.mp3",
+            "https://youtube.com/playlist?list=PLtest",
+            "youtube.com",
+            "https://youtube.com/watch",
+            "https://youtube.com/watch?v=short",
+            "https://youtube.com/watch?v=P-lxOj0XpEEextra",
+            "https://youtube.com/watch?v=P-lxOj0XpEE&v=abc_DEF-123",
+            "https://youtu.be/P-lxOj0XpEE/extra",
+            "https://youtube.com/shorts/invalid",
+            "https://youtube.com/watch?v=P-lxOj0XpEE mais texto",
+        ] {
+            assert!(search_target(address).is_err(), "{address}");
+        }
+    }
+
+    #[test]
+    fn search_validates_input_length_before_running_tools() {
+        for query in ["".to_string(), "  ".to_string(), "á".repeat(301)] {
+            assert!(search_target(&query).is_err());
+        }
+        assert!(search_target(&"á".repeat(300)).is_ok());
+    }
 
     #[test]
     fn newer_preview_cancels_old_ticket_but_stale_cancel_cannot_stop_new_one() {

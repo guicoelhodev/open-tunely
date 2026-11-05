@@ -45,9 +45,11 @@ export function stepPlayer(direction: number, ended = false) {
   const state = get(player);
   const tracks = currentQueue();
   const index = tracks.findIndex(t => t.id === state.track?.id);
-  if (!tracks.length || index < 0) return;
+  if (!state.track || !tracks.length) return;
   if (ended && !state.shuffle && index === tracks.length - 1) return;
   const candidates = tracks.filter(t => t.id !== state.track?.id);
-  const next = state.shuffle && candidates.length ? candidates[Math.floor(Math.random() * candidates.length)] : tracks[(index + direction + tracks.length) % tracks.length];
+  // A live filter can exclude the playing track without interrupting its audio.
+  const nextIndex = index < 0 ? (direction < 0 ? tracks.length - 1 : 0) : (index + direction + tracks.length) % tracks.length;
+  const next = state.shuffle && candidates.length ? candidates[Math.floor(Math.random() * candidates.length)] : tracks[nextIndex];
   void playTrack(next, queue);
 }

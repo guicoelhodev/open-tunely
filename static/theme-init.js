@@ -1,6 +1,6 @@
 // Apply saved colors before the page is painted, including before Svelte loads.
 (() => {
-  let palette = "indigo";
+  let palette = "cyan";
   let mode = "light";
   try {
     const saved = JSON.parse(localStorage.getItem("tunely.appearance") ?? "null");

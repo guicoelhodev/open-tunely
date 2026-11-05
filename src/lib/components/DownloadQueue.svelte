@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "./ui/Button.svelte";
   import Icon from "@iconify/svelte";
   import Popover from "./ui/Popover.svelte";
   import menuIcon from "@iconify-icons/andrsrxn/menu";
@@ -58,17 +59,17 @@
             </div>
             {#if item.status === "error"}
               <div class="flex flex-col justify-evenly gap-1 self-stretch">
-                <button class="flex cursor-pointer rounded-sm bg-muted p-[5px] text-card-foreground focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-[3px]" type="button" onclick={() => retryDownload(item.key)} aria-label={`Tentar baixar ${item.title} novamente`} title="Tentar novamente"><Icon icon={retryIcon} width="20" /></button>
-                <button class="flex cursor-pointer rounded-sm bg-muted p-[5px] text-card-foreground focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-[3px]" type="button" onclick={() => removeDownload(item.key)} aria-label={`Remover ${item.title} da fila`} title="Remover da fila"><Icon icon={removeIcon} width="20" /></button>
+                <Button variant="muted" size="custom" class="p-[5px]" type="button" onclick={() => retryDownload(item.key)} aria-label={`Tentar baixar ${item.title} novamente`} title="Tentar novamente"><Icon icon={retryIcon} width="20" /></Button>
+                <Button variant="muted" size="custom" class="p-[5px]" type="button" onclick={() => removeDownload(item.key)} aria-label={`Remover ${item.title} da fila`} title="Remover da fila"><Icon icon={removeIcon} width="20" /></Button>
               </div>
             {/if}
           </li>
         {/each}
       </ul>
     </Popover>
-    <button class="block w-full cursor-pointer rounded-lg border border-border bg-muted p-3 text-left text-card-foreground hover:bg-secondary focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-[3px]" type="button" popovertarget="download-queue-panel" bind:this={trigger}>
+    <Button variant="surface" size="custom" layout="block" class="w-full p-3" type="button" popovertarget="download-queue-panel" bind:element={trigger}>
       <span class="flex items-baseline justify-between gap-2 text-[0.85rem] font-semibold">{errors === pending.length ? "Downloads com erro" : "Baixando músicas"}<small class="text-[0.65rem] font-normal text-muted-foreground">{errors ? `${errors} com erro · ` : ""}{pending.length} na fila</small></span>
       <span class="mt-2.5 flex items-center gap-2.5 text-[0.8rem]"><Icon icon={menuIcon} width="22" /><progress class="h-[7px] w-full appearance-none overflow-hidden rounded-lg border-0 bg-secondary accent-primary [&::-webkit-progress-bar]:rounded-lg [&::-webkit-progress-bar]:bg-secondary [&::-webkit-progress-value]:rounded-lg [&::-webkit-progress-value]:bg-primary" value={percent} max="100" aria-label="Progresso total dos downloads"></progress><span>{percent}%</span></span>
-    </button>
+    </Button>
   </div>
 {/if}
