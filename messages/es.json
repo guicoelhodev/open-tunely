@@ -104,5 +104,6 @@
   "error_read_permission": "No se pudo leer la carpeta. Comprueba los permisos e inténtalo de nuevo.",
   "error_folder_missing": "Selecciona una carpeta antes de descargar.",
   "error_file_missing": "El MP3 ya no está disponible en la carpeta seleccionada.",
-  "error_download_busy": "Espera a que termine la descarga actual."
+  "error_download_busy": "Espera a que termine la descarga actual.",
+  "error_saved_folder_unavailable": "No se pudo acceder a la carpeta guardada. Selecciona otra carpeta."
 }

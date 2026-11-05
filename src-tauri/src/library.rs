@@ -132,6 +132,30 @@ pub async fn choose_music_folder(app: tauri::AppHandle, title: String) -> Result
     .map_err(|_| "A seleção da pasta foi interrompida.".to_string())?
 }
 
+fn resolve_saved_folder(path: &str) -> Result<PathBuf, String> {
+    let folder = PathBuf::from(path).canonicalize().map_err(|_| {
+        "ERR_SAVED_FOLDER_UNAVAILABLE|Não foi possível acessar a pasta salva. Selecione outra pasta.".to_string()
+    })?;
+    if !folder.is_dir() {
+        return Err("ERR_SAVED_FOLDER_UNAVAILABLE|Não foi possível acessar a pasta salva. Selecione outra pasta.".into());
+    }
+    Ok(folder)
+}
+
+#[tauri::command]
+pub async fn restore_music_folder(app: tauri::AppHandle, path: String) -> Result<MusicLibrary, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        // Never keep an unrelated development folder active if restoration fails.
+        *app.state::<LibraryState>().0.lock()
+            .map_err(|_| "Não foi possível acessar a biblioteca.")? = None;
+        let folder = resolve_saved_folder(&path)?;
+        let library = load_library(&app, &folder)?;
+        *app.state::<LibraryState>().0.lock()
+            .map_err(|_| "Não foi possível guardar a pasta selecionada.")? = Some(folder);
+        Ok(library)
+    }).await.map_err(|_| "A restauração da pasta foi interrompida.".to_string())?
+}
+
 pub fn selected_folder(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     app.state::<LibraryState>()
         .0
@@ -278,7 +302,7 @@ pub async fn delete_music_track(app: tauri::AppHandle, path: String) -> Result<(
 
 #[cfg(test)]
 mod tests {
-    use super::{checked_track, rename_track_file, renamed_path, scan_folder};
+    use super::{checked_track, rename_track_file, renamed_path, resolve_saved_folder, scan_folder};
 
     #[test]
     fn mutations_only_accept_direct_regular_mp3_files() {
@@ -390,6 +414,18 @@ mod tests {
         assert_eq!(tracks[0].path, folder.join("alpha.mp3").to_str().unwrap());
         assert_eq!(tracks[0].size, 6);
         std::fs::remove_dir_all(folder).unwrap();
+    }
+
+    #[test]
+    fn saved_folder_must_be_an_existing_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("music");
+        std::fs::create_dir(&path).unwrap();
+        assert_eq!(resolve_saved_folder(path.to_str().unwrap()).unwrap(), path.canonicalize().unwrap());
+        let file = dir.path().join("song.mp3");
+        std::fs::write(&file, b"audio").unwrap();
+        assert!(resolve_saved_folder(file.to_str().unwrap()).unwrap_err().starts_with("ERR_SAVED_FOLDER_UNAVAILABLE|"));
+        assert!(resolve_saved_folder(dir.path().join("missing").to_str().unwrap()).unwrap_err().starts_with("ERR_SAVED_FOLDER_UNAVAILABLE|"));
     }
 
     #[test]

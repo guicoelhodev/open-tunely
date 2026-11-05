@@ -104,5 +104,6 @@
   "error_read_permission": "Could not read the folder. Check permissions and try again.",
   "error_folder_missing": "Select a folder before downloading.",
   "error_file_missing": "The MP3 is no longer available in the selected folder.",
-  "error_download_busy": "Wait for the current download to finish."
+  "error_download_busy": "Wait for the current download to finish.",
+  "error_saved_folder_unavailable": "Could not access the saved folder. Select another folder."
 }

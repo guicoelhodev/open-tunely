@@ -8,14 +8,14 @@ use std::{
 #[derive(Default)]
 pub struct DownloadState(Mutex<()>);
 
-fn download_command(binary: &Path, ffmpeg: &Path, work: &Path, id: &str) -> Command {
+fn download_command(binary: &Path, deno: &Path, ffmpeg: &Path, work: &Path, id: &str) -> Command {
     let mut command = Command::new(binary);
+    super::configure_ytdlp_runtime(&mut command, deno);
     command
         .current_dir(work)
         .args([
             "--ignore-config",
             "--no-plugin-dirs",
-            "--no-js-runtimes",
             "--no-playlist",
             "--newline",
             "--progress",
@@ -133,6 +133,7 @@ impl ProgressReader {
 
 fn download_with_ytdlp(
     binary: &Path,
+    deno: &Path,
     ffmpeg: &Path,
     folder: &Path,
     id: &str,
@@ -144,7 +145,7 @@ fn download_with_ytdlp(
         .map_err(|_| "ERR_WRITE_PERMISSION|Não foi possível gravar na pasta. Verifique o espaço e as permissões.")?;
     let mut reader = ProgressReader::default();
     let output = super::run_ytdlp_process_with_progress(
-        &mut download_command(binary, ffmpeg, work.path(), id),
+        &mut download_command(binary, deno, ffmpeg, work.path(), id),
         &AtomicBool::new(false),
         Duration::from_secs(600),
         |bytes, stderr| reader.feed(bytes, stderr, &mut progress),
@@ -173,6 +174,7 @@ pub async fn download_song(
     // Destinations come from native selection or the local development configuration.
     let folder = super::library::selected_folder(&app)?;
     let binary = super::tool_binary(&app)?;
+    let deno = super::private_tool(&app, "deno")?;
     let ffmpeg = super::private_tool(&app, "ffmpeg")?;
     super::private_tool(&app, "ffprobe")?;
     let state = Arc::clone(&state);
@@ -183,6 +185,7 @@ pub async fn download_song(
             .map_err(|_| "ERR_DOWNLOAD_BUSY|Aguarde o download atual terminar.")?;
         download_with_ytdlp(
             &binary,
+            &deno,
             ffmpeg.parent().unwrap(),
             &folder,
             &id,
@@ -266,7 +269,7 @@ mod tests {
             std::fs::write(&binary, script).unwrap();
             std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o755)).unwrap();
             let result =
-                download_with_ytdlp(&binary, tools.path(), folder.path(), "P-lxOj0XpEE", |_| {});
+                download_with_ytdlp(&binary, Path::new("/private/deno"), tools.path(), folder.path(), "P-lxOj0XpEE", |_| {});
             assert_eq!(result.is_ok(), succeeds);
             let files = std::fs::read_dir(folder.path())
                 .unwrap()
@@ -280,6 +283,7 @@ mod tests {
     fn download_uses_explicit_private_tools_and_separate_arguments() {
         let command = download_command(
             Path::new("/private/yt-dlp"),
+            Path::new("/private/deno with spaces"),
             Path::new("/private/tools"),
             Path::new("/music with spaces"),
             "P-lxOj0XpEE",
@@ -301,7 +305,7 @@ mod tests {
             args.windows(2)
                 .any(|pair| pair == ["--audio-format", "mp3"])
         );
-        assert!(args.contains(&"--no-js-runtimes".into()));
+        assert!(args.windows(2).any(|pair| pair == ["--js-runtimes", "deno:/private/deno with spaces"]));
         assert_eq!(
             args.last().unwrap(),
             "https://www.youtube.com/watch?v=P-lxOj0XpEE"

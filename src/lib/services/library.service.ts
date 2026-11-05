@@ -13,10 +13,30 @@ export const choosingFolder = readonly(selecting);
 let selection: Promise<Library | null> | undefined;
 let revision = 0;
 let initialization: Promise<void> | undefined;
+const folderStorageKey = "tunely.musicFolder";
+
+function savedFolder(): string | null {
+  try { return localStorage.getItem(folderStorageKey); }
+  catch { return null; }
+}
+
+function saveFolder(folder: string) {
+  try { localStorage.setItem(folderStorageKey, folder); }
+  catch { /* The current session still works when storage is unavailable. */ }
+}
 
 export function initializeMusicLibrary(): Promise<void> {
   if (!isTauri()) return Promise.resolve();
-  return initialization ??= refreshMusicLibrary();
+  return initialization ??= (async () => {
+    const folder = savedFolder();
+    if (!folder) return refreshMusicLibrary();
+    const current = revision;
+    const restored = await invoke<Library>("restore_music_folder", { path: folder });
+    if (current === revision && !selection) {
+      currentLibrary.set(restored);
+      saveFolder(restored.folder);
+    }
+  })();
 }
 
 export function chooseMusicFolder(): Promise<Library | null> {
@@ -24,9 +44,11 @@ export function chooseMusicFolder(): Promise<Library | null> {
   if (selection) return selection;
   revision += 1;
   selecting.set(true);
-  selection = invoke<Library | null>("choose_music_folder", { title: m.text_selecionar_pasta_de_musicas() })
+  selection = initializeMusicLibrary().catch(() => {}).then(() =>
+    invoke<Library | null>("choose_music_folder", { title: m.text_selecionar_pasta_de_musicas() }),
+  )
     .then((chosen) => {
-      if (chosen) currentLibrary.set(chosen);
+      if (chosen) { currentLibrary.set(chosen); saveFolder(chosen.folder); }
       return chosen;
     })
     .finally(() => {

@@ -16,3 +16,6 @@ vite.config.ts.timestamp-*
 /src-tauri/binaries/ffprobe
 /src-tauri/binaries/ffmpeg-LICENSE.txt
 /src-tauri/binaries/.setup-*/
+
+/src-tauri/binaries/deno
+/src-tauri/binaries/deno-LICENSE.md

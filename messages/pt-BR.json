@@ -104,5 +104,6 @@
   "error_read_permission": "Não foi possível ler a pasta. Verifique as permissões e tente novamente.",
   "error_folder_missing": "Selecione uma pasta antes de baixar.",
   "error_file_missing": "O MP3 não está mais disponível na pasta selecionada.",
-  "error_download_busy": "Aguarde o download atual terminar."
+  "error_download_busy": "Aguarde o download atual terminar.",
+  "error_saved_folder_unavailable": "Não foi possível acessar a pasta salva. Selecione outra pasta."
 }

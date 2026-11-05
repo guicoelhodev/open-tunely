@@ -1,82 +1,102 @@
-# Busca de músicas
+<div align="center">
 
-Tauri 2 + Svelte. Pesquisa o primeiro resultado do YouTube pelo nome da música
-ou artista, permite ouvir o resultado e salvar a música em MP3 na biblioteca local.
+<img src="static/favicon.png" alt="Open Tunely icon" width="96" />
 
-## Desenvolvimento (Linux x64)
+# Open Tunely
 
-Com os pré-requisitos de desenvolvimento do Tauri instalados:
+**Find a song, listen, and make it part of your own music library.**
+
+A desktop music downloader and player built with Tauri, Svelte, and Rust.
+
+[![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](https://tauri.app/)
+[![Svelte 5](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white)](https://svelte.dev/)
+[![Rust](https://img.shields.io/badge/Rust-backend-DEA584?logo=rust&logoColor=black)](https://www.rust-lang.org/)
+[![Platform](https://img.shields.io/badge/platform-Linux%20x64-FCC624?logo=linux&logoColor=black)](#getting-started)
+[![Repository views](https://hits.dwyl.com/guicoelhodev/open-tunely.svg)](https://hits.dwyl.com/guicoelhodev/open-tunely)
+
+[Features](#features) · [Getting started](#getting-started) · [Development](#development) · [Contributing](#contributing)
+
+</div>
+
+> **Early development:** Linux x64 is the initial development target. Windows support and standalone releases are planned.
+
+## Features
+
+- **Search and preview** — find the first YouTube result for a song, artist, or video URL and listen before downloading.
+- **Download to MP3** — follow progress in a background queue, then retry or remove failed downloads.
+- **Your local library** — choose a folder, browse its MP3 files, and rename or delete tracks.
+- **One shared player** — play local tracks and YouTube previews with seeking, volume, shuffle, and previous/next controls.
+- **Make it yours** — choose a color theme and use the interface in English, Brazilian Portuguese, or Spanish. Your preferences are saved locally.
+- **Managed media tools** — use project-managed yt-dlp, FFmpeg, ffprobe, and Deno binaries without installing them globally or setting up Python.
+
+## Getting started
+
+### Requirements
+
+- Linux x64
+- Node.js and npm
+- The Rust toolchain and [Tauri's Linux prerequisites](https://v2.tauri.app/start/prerequisites/)
+- Internet access and `tar` with XZ support and `unzip` for the media tool setup
+
+### Run locally
 
 ```sh
+git clone https://github.com/guicoelhodev/open-tunely.git
+cd open-tunely
 npm install
 npm run setup:tools
 npm run dev
 ```
 
-`npm run dev` abre a janela desktop do Tauri e inicia o Vite automaticamente.
-Faça as buscas nessa janela: abrir `localhost:1420` no navegador mostra apenas
-a interface, sem acesso ao backend Rust. `npm run dev:web` inicia somente a
-interface para ajustes visuais. `npm run tauri dev` também continua disponível.
+The setup script downloads pinned media tool builds, checks their SHA-256 hashes, and stores them in `src-tauri/binaries/`. Existing copies are reused when their checksums match.
 
-O setup baixa o executável independente oficial do yt-dlp 2026.10.26,
-verifica o SHA-256 fixado no script e salva em `src-tauri/binaries/yt-dlp`.
-O binário não é versionado; o setup reaproveita a cópia se o checksum confere.
-O aplicativo usa exclusivamente essa cópia, sem procurar yt-dlp no PATH.
-O setup também prepara FFmpeg e ffprobe estáticos da release
-`autobuild-2026-11-03-20-37` de [yt-dlp/FFmpeg-Builds](https://github.com/yt-dlp/FFmpeg-Builds),
-verificando o SHA-256 do arquivo e dos executáveis. A licença acompanha as ferramentas.
-O setup de desenvolvimento requer `tar` com suporte a XZ. O app usa caminhos
-explícitos para suas ferramentas; os três executáveis são recursos dos builds locais.
+`npm run dev` opens the Tauri desktop window. Search, playback, and filesystem operations require that window. For frontend-only visual work, use `npm run dev:web`.
 
-A interface chama `search_song` no Rust. O backend executa
-`ytsearch1:<consulta>` com `--flat-playlist --skip-download --dump-json`
-e retorna `{ id, title }`. O processo roda fora da thread da interface.
-Ao clicar em **Ouvir**, a interface chama `preview_song` com o ID do resultado.
-O Rust solicita ao yt-dlp uma URL HTTPS temporária de áudio, preferindo M4A,
-e o player nativo oferece reprodução, pausa, volume e navegação. Uma nova busca
-interrompe a reprodução e cancela a extração anterior, encerrando o grupo de
-processos do yt-dlp no Linux. A preparação tem limite de 45 segundos e apenas
-uma extração de prévia executa por vez. Se o áudio falhar ou o endereço expirar,
-**Tentar novamente** solicita uma nova URL. A prévia não salva arquivos.
+## Using Open Tunely
 
-O botão **Baixar música** usa a pasta da biblioteca. Se nenhuma estiver selecionada,
-abre o mesmo seletor nativo; cancelar encerra a ação. O Rust baixa e converte com
-as ferramentas privadas em uma pasta temporária dentro do destino, com limite de
-10 minutos. Ao concluir, publica `Título [ID].mp3` sem substituir arquivos existentes
-e atualiza a biblioteca. Arquivos temporários são removidos ao terminar ou falhar.
-Transmissões ao vivo não são baixadas. Há um download por vez, com estado de espera
-e mensagens de sucesso/erro; ainda não há progresso percentual ou cancelamento.
+1. Search for a song, artist, or YouTube video URL and preview the result.
+2. Choose a music folder, or select **Download MP3** and choose a folder when prompted.
+3. Follow progress in the library's download queue. Downloads run one at a time, and you can keep searching while they run.
+4. Play tracks from your library. Right-click a track to rename or delete it.
 
-As chamadas ao Rust ficam em `src/lib/services/*.service.ts`: busca/prévia,
-biblioteca compartilhada e orquestração do download. Os componentes consomem os
-serviços e cuidam da interface e reprodução.
+Files are saved as `Track title.mp3`. Existing files with the same name are not overwritten. The library lists MP3 files directly inside the selected folder, excluding subfolders and symbolic links; titles come from filenames. The selected folder is saved locally and restored when you reopen the app.
 
-O app não usa runtimes JavaScript do sistema. A extração sem Deno
-pode ter formatos indisponíveis em alguns vídeos; o suporte a um Deno próprio
-fica para uma próxima etapa. A reprodução também
-depende dos codecs disponíveis no WebView do Linux.
+## How it works
 
-## Biblioteca local
+| Layer | Tools and responsibilities |
+| --- | --- |
+| Interface | Svelte 5, TypeScript, Tailwind CSS, Iconify, and Paraglide for translations |
+| Desktop backend | Tauri 2 and Rust commands, with explicit paths to managed media tools |
+| Playback | A shared player for local files and temporary YouTube audio URLs; local files stream through a loopback HTTP server with seeking support |
+| Downloads | A frontend queue tracks progress while Rust stages conversion and publishes completed MP3 files |
 
-A biblioteca lateral permite escolher uma pasta pelo diálogo nativo e lista
-os arquivos `.mp3` e `.MP3` diretamente nela, ordenados pelo nome. Subpastas e
-links simbólicos não são incluídos. O nome exibido vem do arquivo, sem ler tags ID3.
-Os botões de play/pause e os controles do player reproduzem os arquivos locais;
-iniciar uma música local interrompe a prévia do YouTube e vice-versa.
-Cancelar a seleção mantém a biblioteca atual. A pasta é mantida apenas na sessão.
+See [the project context](docs/context.md) for more architectural details.
 
-Os ícones usam `@iconify/svelte` com módulos locais da coleção `andrsrxn`,
-sem depender da API do Iconify. O protocolo de assets do Tauri está habilitado
-com escopo inicial vazio; o Rust libera os MP3 listados após a escolha da pasta.
-O serviço `local-audio.service.ts` lê o arquivo liberado e cria uma URL Blob para
-o player, evitando a falha do WebKitGTK ao reproduzir diretamente via `asset://`.
-Apenas a faixa ativa é carregada em memória; trocar de música ou parar cancela
-a leitura pendente e libera a URL anterior.
+## Development
 
-## Verificação
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the desktop app in development mode |
+| `npm run dev:web` | Start the frontend only |
+| `npm run setup:tools` | Download and verify the managed media tools |
+| `npm run check` | Check Svelte and TypeScript |
+| `npm run build` | Build the frontend |
+| `cargo test --manifest-path src-tauri/Cargo.toml` | Run backend tests |
+| `cargo fmt --manifest-path src-tauri/Cargo.toml --check` | Check Rust formatting |
 
-```sh
-npm run check
-npm run build
-cargo test --manifest-path src-tauri/Cargo.toml
-```
+Frontend services live in `src/lib/services/`, UI components in `src/lib/components/`, translations in `messages/`, and backend code in `src-tauri/src/`.
+
+## Current limitations
+
+- Windows playback and packaging have not been validated. AppImage packaging and public releases are deferred.
+- YouTube extraction depends on yt-dlp compatibility and video availability.
+- Playback depends on the platform WebView and available codecs.
+- Duplicate detection uses the destination filename, not a persistent video ID index.
+
+## Contributing
+
+Bug reports and focused contributions are welcome. When reporting a problem, include your Linux distribution, steps to reproduce, and relevant error output. For changes, describe the expected behavior and run the relevant checks above.
+
+## Acknowledgments
+
+Built with [Tauri](https://tauri.app/), [Svelte](https://svelte.dev/), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [FFmpeg](https://ffmpeg.org/), [Tailwind CSS](https://tailwindcss.com/), and [Iconify](https://iconify.design/). Managed media tools retain their upstream licenses; the setup includes the FFmpeg and Deno licenses alongside their binaries.

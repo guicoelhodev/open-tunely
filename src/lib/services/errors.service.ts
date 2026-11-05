@@ -18,6 +18,7 @@ export function errorMessage(cause: unknown, locale: Locale = getLocale()): stri
     case "ERR_RENAME_PERMISSION": return m.error_rename_permission({}, { locale });
     case "ERR_DELETE_PERMISSION": return m.error_delete_permission({}, { locale });
     case "ERR_READ_PERMISSION": return m.error_read_permission({}, { locale });
+    case "ERR_SAVED_FOLDER_UNAVAILABLE": return m.error_saved_folder_unavailable({}, { locale });
     case "ERR_FOLDER_MISSING": return m.error_folder_missing({}, { locale });
     case "ERR_FILE_MISSING": return m.error_file_missing({}, { locale });
     case "ERR_DOWNLOAD_BUSY": return m.error_download_busy({}, { locale });

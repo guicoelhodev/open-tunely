@@ -315,12 +315,19 @@ fn search_target(query: &str) -> Result<String, String> {
     Ok(format!("https://www.youtube.com/watch?v={id}"))
 }
 
-fn search_with_ytdlp(binary: PathBuf, target: &str) -> Result<Song, String> {
-    let output = Command::new(binary)
+fn configure_ytdlp_runtime(command: &mut Command, deno: &std::path::Path) {
+    let mut runtime = std::ffi::OsString::from("deno:");
+    runtime.push(deno.as_os_str());
+    command.args(["--no-js-runtimes", "--js-runtimes"]).arg(runtime);
+}
+
+fn search_with_ytdlp(binary: PathBuf, deno: PathBuf, target: &str) -> Result<Song, String> {
+    let mut command = Command::new(binary);
+    configure_ytdlp_runtime(&mut command, &deno);
+    let output = command
         .args([
             "--ignore-config",
             "--no-plugin-dirs",
-            "--no-js-runtimes",
             "--no-playlist",
             "--flat-playlist",
             "--skip-download",
@@ -365,7 +372,8 @@ fn parse_song(output: &[u8]) -> Result<Song, String> {
 async fn search_song(app: tauri::AppHandle, query: String) -> Result<Song, String> {
     let target = search_target(&query)?;
     let binary = tool_binary(&app)?;
-    tauri::async_runtime::spawn_blocking(move || search_with_ytdlp(binary, &target))
+    let deno = private_tool(&app, "deno")?;
+    tauri::async_runtime::spawn_blocking(move || search_with_ytdlp(binary, deno, &target))
         .await
         .map_err(|error| format!("A pesquisa foi interrompida: {error}"))?
 }
@@ -414,13 +422,13 @@ fn parse_preview_url(output: &[u8]) -> Result<String, String> {
     Ok(address.to_string())
 }
 
-fn preview_with_ytdlp(binary: PathBuf, id: &str, cancelled: &AtomicBool) -> Result<String, String> {
+fn preview_with_ytdlp(binary: PathBuf, deno: PathBuf, id: &str, cancelled: &AtomicBool) -> Result<String, String> {
     let mut command = Command::new(binary);
+    configure_ytdlp_runtime(&mut command, &deno);
     command
         .args([
             "--ignore-config",
             "--no-plugin-dirs",
-            "--no-js-runtimes",
             "--no-playlist",
             "--skip-download",
             "--get-url",
@@ -469,6 +477,7 @@ async fn preview_song(
         return Err("O identificador da música é inválido.".into());
     }
     let binary = tool_binary(&app)?;
+    let deno = private_tool(&app, "deno")?;
     let cancelled = state.token(ticket)?;
     let state = Arc::clone(&state);
     tauri::async_runtime::spawn_blocking(move || {
@@ -477,7 +486,7 @@ async fn preview_song(
             .execution
             .lock()
             .map_err(|_| "Não foi possível preparar o áudio.")?;
-        preview_with_ytdlp(binary, &id, &cancelled)
+        preview_with_ytdlp(binary, deno, &id, &cancelled)
     })
     .await
     .map_err(|error| format!("A preparação do áudio foi interrompida: {error}"))?
@@ -500,6 +509,7 @@ pub fn run() {
             cancel_preview,
             preview_song,
             library::choose_music_folder,
+            library::restore_music_folder,
             library::refresh_music_library,
             library::rename_music_track,
             library::delete_music_track,

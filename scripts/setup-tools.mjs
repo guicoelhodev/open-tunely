@@ -7,6 +7,10 @@ import { promisify } from "node:util";
 const directory = new URL("../src-tauri/binaries/", import.meta.url);
 const digest = (data) => createHash("sha256").update(data).digest("hex");
 const execute = promisify(execFile);
+const denoVersion = "2.9.8";
+const denoArchiveHash = "e890975bc2549807bbcc0b584ffafda72cc7c93349dd99c80483dd784f6c4609";
+const denoBinaryHash = "368bca08999e02c6911b8f248167b582276b1f547db5712b6e736d7eda1dbda7";
+const denoLicenseHash = "f62497fffecc0852960c8d3e6934b9db86d16396e9b604072e923892cae3a588";
 const ytVersion = "2026.10.26";
 const ytHash = "767ba9dce7052aa196f8b12652f433d76de128ba168966fa84b6394d5e6c6795";
 // Static Linux x64 build maintained by yt-dlp; pinned tag and archive SHA-256.
@@ -45,6 +49,30 @@ async function setupYtdlp(work) {
   console.log(`yt-dlp ${ytVersion} preparado.`);
 }
 
+async function setupDeno(work) {
+  const binary = new URL("deno", directory);
+  const license = new URL("deno-LICENSE.md", directory);
+  if (!await verified(binary, denoBinaryHash)) {
+    console.log(`Baixando Deno ${denoVersion} para Linux x64…`);
+    const data = await download(`https://github.com/denoland/deno/releases/download/v${denoVersion}/deno-x86_64-unknown-linux-gnu.zip`, denoArchiveHash);
+    const archive = `${work}/deno.zip`;
+    await writeFile(archive, data);
+    await execute("unzip", ["-q", archive, "deno", "-d", work]);
+    const extracted = `${work}/deno`;
+    if (!await verified(extracted, denoBinaryHash)) throw new Error("Checksum de deno não confere.");
+    await chmod(extracted, 0o755);
+    await rename(extracted, binary);
+  }
+  if (!await verified(license, denoLicenseHash)) {
+    const data = await download(`https://raw.githubusercontent.com/denoland/deno/v${denoVersion}/LICENSE.md`, denoLicenseHash);
+    const temporary = `${work}/deno-LICENSE.md`;
+    await writeFile(temporary, data);
+    await rename(temporary, license);
+  }
+  await chmod(binary, 0o755);
+  console.log(`Deno ${denoVersion} preparado.`);
+}
+
 async function setupFfmpeg(work) {
   const valid = await Promise.all(Object.entries(ffHashes).map(([name, hash]) => verified(new URL(name, directory), hash)));
   let hasLicense = false;
@@ -78,6 +106,7 @@ try {
   await mkdir(directory, { recursive: true });
   work = await mkdtemp(`${fileURLToPath(directory)}.setup-`);
   await setupYtdlp(work);
+  await setupDeno(work);
   await setupFfmpeg(work);
 } catch (error) {
   console.error(`Não foi possível preparar as ferramentas: ${error.message}`);
