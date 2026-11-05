@@ -18,7 +18,7 @@ A desktop music downloader and player built with Tauri, Svelte, and Rust.
 
 </div>
 
-> **Early development:** Linux x64 is the initial development target. Windows support and standalone releases are planned.
+> **Early development:** Linux x64 is the current validated platform. Distribution targets are Windows and Linux (`.deb` and `.AppImage`); Windows support and AppImage packaging are still being validated.
 
 ## Features
 
@@ -36,7 +36,7 @@ A desktop music downloader and player built with Tauri, Svelte, and Rust.
 - Linux x64
 - Node.js and npm
 - The Rust toolchain and [Tauri's Linux prerequisites](https://v2.tauri.app/start/prerequisites/)
-- Internet access, `curl`, `tar` with XZ support, `unzip`, GCC, make, pkg-config and NASM for media tool setup
+- Internet access, Bash, `curl`, `tar` with Gzip/XZ support, `unzip`, `sha256sum`, GCC, make, pkg-config, and NASM for media tool setup; `patchelf` for AppImage packaging
 
 ### Run locally
 
@@ -48,9 +48,7 @@ npm run setup:tools
 npm run dev
 ```
 
-The setup script downloads pinned yt-dlp and Deno builds and compiles audio-only FFmpeg/ffprobe from checksum-verified FFmpeg 8.0 and LAME 3.100 sources. Tools are stored in `src-tauri/binaries/`. FFmpeg is rebuilt on each setup; compiler dependencies are needed only on the build machine.
-
-To build only FFmpeg/ffprobe, run `bash scripts/build-ffmpeg.sh`. It keeps AAC, Opus, Vorbis, MP3, FLAC and basic PCM decoding, MP3 encoding and local-file processing. Media libraries are linked statically. Network access and video decoding are disabled; yt-dlp handles downloads. The same recipe targets Windows through MSYS2 MINGW64, but Windows execution and integration are not yet validated. Use `FFMPEG_OUTPUT` to choose a separate output directory and `JOBS` to control build parallelism. Build configuration and upstream license texts accompany the output. Linux builds should run on the oldest supported distribution to avoid requiring a newer glibc.
+The setup script downloads checksum-verified yt-dlp and Deno binaries and compiles FFmpeg/ffprobe with LAME for MP3 conversion. Tools are stored in `src-tauri/binaries/` and included in desktop packages. Build tools are required only on the development machine. FFmpeg/ffprobe are rebuilt each time setup runs.
 
 `npm run dev` opens the Tauri desktop window. Search, playback, and filesystem operations require that window. For frontend-only visual work, use `npm run dev:web`.
 
@@ -80,17 +78,35 @@ See [the project context](docs/context.md) for more architectural details.
 | --- | --- |
 | `npm run dev` | Start the desktop app in development mode |
 | `npm run dev:web` | Start the frontend only |
-| `npm run setup:tools` | Download and verify the managed media tools |
+| `npm run setup:tools` | Download yt-dlp and Deno and compile FFmpeg/ffprobe |
+| `bash scripts/build-ffmpeg.sh` | Compile only FFmpeg/ffprobe |
+| `npm run check:tools` | Validate offline yt-dlp to MP3 conversion |
 | `npm run check` | Check Svelte and TypeScript |
 | `npm run build` | Build the frontend |
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Run backend tests |
 | `cargo fmt --manifest-path src-tauri/Cargo.toml --check` | Check Rust formatting |
 
+To build the Linux packages after preparing the media tools:
+
+```sh
+npm run tauri build
+```
+
+The Linux configuration generates only `.deb` and `.AppImage` packages under `src-tauri/target/release/bundle/`. To generate only the AppImage, run `npm run tauri build -- --bundles appimage`. The AppImage includes GStreamer for audio playback and is larger than the Debian package.
+
+For distribution builds, use Ubuntu 22.04 with Tauri's native prerequisites, `patchelf`, and the GStreamer base, good, bad, and libav plugin packages. The `Linux packages` GitHub Actions workflow prepares this environment, builds both formats, checks the AppImage payload, and uploads downloadable workflow artifacts. Run it manually from Actions or with a `v*` tag; it does not publish a release.
+
+Validate a generated AppImage with `bash scripts/check-appimage.sh path/to/app.AppImage`. To launch it, make it executable with `chmod +x path/to/app.AppImage` and run it. On systems without FUSE, use `path/to/app.AppImage --appimage-extract-and-run`. Payload checks do not replace desktop tests of playback, downloads, and folder selection on the supported distributions.
+
+The FFmpeg build supports AAC, Opus, Vorbis, MP3, FLAC, and basic PCM inputs, with MP3 output. yt-dlp handles network downloads. Set `JOBS` to control compilation parallelism or `FFMPEG_OUTPUT` to choose a separate output directory. The output includes build configuration and license texts. Build Linux releases on the oldest supported distribution to avoid requiring a newer glibc.
+
+The FFmpeg script also includes an MSYS2 MINGW64 build path for Windows. This does not yet provide a working Windows app setup: `npm run setup:tools` currently supports Linux x64 only.
+
 Frontend services live in `src/lib/services/`, UI components in `src/lib/components/`, translations in `src/languages/`, and backend code in `src-tauri/src/`.
 
 ## Current limitations
 
-- Windows playback and packaging have not been validated. AppImage packaging and public releases are deferred.
+- Windows setup, playback, and packaging have not been validated. The AppImage has been built and opened locally on Arch Linux; cross-distribution playback and the Ubuntu workflow still need validation. Public releases are pending.
 - YouTube extraction depends on yt-dlp compatibility and video availability.
 - Playback depends on the platform WebView and available codecs.
 - Duplicate detection uses the destination filename, not a persistent video ID index.
@@ -101,4 +117,4 @@ Bug reports and focused contributions are welcome. When reporting a problem, inc
 
 ## Acknowledgments
 
-Built with [Tauri](https://tauri.app/), [Svelte](https://svelte.dev/), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [FFmpeg](https://ffmpeg.org/), [Tailwind CSS](https://tailwindcss.com/), and [Iconify](https://iconify.design/). Managed media tools retain their upstream licenses; the setup includes the FFmpeg and Deno licenses alongside their binaries.
+Built with [Tauri](https://tauri.app/), [Svelte](https://svelte.dev/), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [FFmpeg](https://ffmpeg.org/), [Tailwind CSS](https://tailwindcss.com/), and [Iconify](https://iconify.design/). Managed media tools retain their upstream licenses; the setup includes FFmpeg, LAME, and Deno license texts alongside their binaries.
