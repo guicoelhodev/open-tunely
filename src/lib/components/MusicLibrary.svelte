@@ -6,6 +6,7 @@
   import playIcon from "@iconify-icons/andrsrxn/play";
   import pauseIcon from "@iconify-icons/andrsrxn/pause";
   import musicIcon from "@iconify-icons/andrsrxn/music-note";
+  import searchIcon from "@iconify-icons/andrsrxn/search";
   import { library, choosingFolder, chooseMusicFolder, initializeMusicLibrary, type Track } from "$lib/services/library.service";
   import { downloading, downloadNotice } from "$lib/services/download.service";
   import { loadLocalAudio } from "$lib/services/local-audio.service";
@@ -19,6 +20,14 @@
     return `${parts.length > 2 ? ".../" : ""}${parts.slice(-2).join("/")}`;
   });
   let error = $state("");
+  let query = $state("");
+  function normalizeSearch(value: string) {
+    return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
+  }
+  const searchTerm = $derived(normalizeSearch(query));
+  const filteredTracks = $derived(($library?.tracks ?? []).filter(track =>
+    normalizeSearch(`${track.title} ${track.filename}`).includes(searchTerm)
+  ));
   let trackActions: TrackActions;
   const active = $derived($player.track);
   const playing = $derived($player.playing);
@@ -30,7 +39,7 @@
   let previousFolder: string | undefined;
   $effect(() => {
     const folder = $library?.folder;
-    if (folder !== previousFolder) { previousFolder = folder; untrack(stopPlayer); }
+    if (folder !== previousFolder) { previousFolder = folder; query = ""; untrack(stopPlayer); }
   });
   async function chooseFolder() {
     error = "";
@@ -72,33 +81,45 @@
   </div>
 
   {#if $library}
-    <p class="mx-1 mt-[18px] mb-3 text-xs text-[#637184]">{$library.tracks.length} {$library.tracks.length === 1 ? "música" : "músicas"}</p>
-    {#if $library.tracks.length}
-      <ul class="-mx-1 min-h-0 flex-1 list-none overflow-y-auto px-1 pt-0.5 pb-2" onscroll={() => trackActions?.dismiss()}>
-        {#each $library.tracks as track (track.path)}
-          <li class="mb-2.5 flex items-center gap-2.5 rounded-[13px] border p-2.5 {active?.id === track.path ? 'border-[#7aa7ff] bg-[#f5f8ff]' : 'border-[#d8dee7]'}" oncontextmenu={(event) => trackActions.open(event, track)}>
-            <div class="flex h-[46px] w-[42px] shrink-0 items-center justify-center rounded-[10px] bg-[#f0f3f7] text-[#7d8a9d]" aria-hidden="true"><Icon icon={musicIcon} width="24" /></div>
-            <div class="min-w-0 flex-1">
-              <h3 class="mb-1.5 truncate text-sm font-semibold" title={track.filename}>{track.title}</h3>
-              <p class="text-xs text-[#637184]">MP3 <span aria-hidden="true">·</span> {fileSize(track.size)}</p>
-            </div>
-            <button class="inline-flex h-9 w-[34px] shrink-0 cursor-pointer items-center justify-center rounded-[10px] bg-transparent p-0 text-[#1599c8] hover:bg-[#edf8fc] disabled:cursor-wait disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-[3px]" type="button" onclick={() => toggle(track)}
-              onkeydown={(event) => { if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) void trackActions.open(event, track); }}
-              disabled={preparing === track.path}
-              aria-label={`${active?.id === track.path && playing ? "Pausar" : "Ouvir"} ${track.title}`}
-              title={active?.id === track.path && playing ? "Pausar" : "Ouvir"}>
-              <Icon icon={active?.id === track.path && playing ? pauseIcon : playIcon} width="20" />
-            </button>
-          </li>
-        {/each}
-      </ul>
-    {:else}
-      <div class="flex flex-1 flex-col items-center justify-center gap-3 px-3 py-8 text-center text-[#637184]">
-        <Icon icon={musicIcon} width="32" />
-        <p class="text-[0.9rem] text-[#34445a]">Nenhum arquivo MP3 nesta pasta.</p>
-        <span class="max-w-[230px] text-[0.8rem] leading-[1.6]">Escolha outra pasta pelo ícone acima.</span>
+    <div class="-mx-1 flex min-h-0 flex-1 flex-col overflow-y-auto px-1" onscroll={() => trackActions?.dismiss()}>
+      <div class="sticky top-0 z-10 shrink-0 bg-white py-3">
+        <label for="library-query" class="sr-only">Buscar na minha biblioteca</label>
+        <div class="relative">
+          <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[#637184]" aria-hidden="true"><Icon icon={searchIcon} width="18" /></span>
+          <input id="library-query" type="search" bind:value={query} placeholder="Buscar na biblioteca…"
+            class="w-full min-w-0 rounded-lg border border-[#8b949e] bg-white py-2.5 pr-3 pl-10 text-sm focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-[3px]" />
+        </div>
       </div>
-    {/if}
+      <p class="mx-1 mb-3 shrink-0 text-xs text-[#637184]" role="status">
+        {#if searchTerm}{filteredTracks.length} de {/if}{$library.tracks.length} {$library.tracks.length === 1 ? "música" : "músicas"}
+      </p>
+      {#if filteredTracks.length}
+        <ul class="shrink-0 list-none pt-0.5 pb-2">
+          {#each filteredTracks as track (track.path)}
+            <li class="mb-2.5 flex items-center gap-2.5 rounded-[13px] border p-2.5 {active?.id === track.path ? 'border-[#7aa7ff] bg-[#f5f8ff]' : 'border-[#d8dee7]'}" oncontextmenu={(event) => trackActions.open(event, track)}>
+              <div class="flex h-[46px] w-[42px] shrink-0 items-center justify-center rounded-[10px] bg-[#f0f3f7] text-[#7d8a9d]" aria-hidden="true"><Icon icon={musicIcon} width="24" /></div>
+              <div class="min-w-0 flex-1">
+                <h3 class="mb-1.5 truncate text-sm font-semibold" title={track.filename}>{track.title}</h3>
+                <p class="text-xs text-[#637184]">MP3 <span aria-hidden="true">·</span> {fileSize(track.size)}</p>
+              </div>
+              <button class="inline-flex h-9 w-[34px] shrink-0 cursor-pointer items-center justify-center rounded-[10px] bg-transparent p-0 text-[#1599c8] hover:bg-[#edf8fc] disabled:cursor-wait disabled:opacity-50 focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-[#7aa7ff] focus-visible:outline-offset-[3px]" type="button" onclick={() => toggle(track)}
+                onkeydown={(event) => { if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) void trackActions.open(event, track); }}
+                disabled={preparing === track.path}
+                aria-label={`${active?.id === track.path && playing ? "Pausar" : "Ouvir"} ${track.title}`}
+                title={active?.id === track.path && playing ? "Pausar" : "Ouvir"}>
+                <Icon icon={active?.id === track.path && playing ? pauseIcon : playIcon} width="20" />
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <div class="flex flex-1 flex-col items-center justify-center gap-3 px-3 py-8 text-center text-[#637184]">
+          <Icon icon={musicIcon} width="32" />
+          <p class="text-[0.9rem] text-[#34445a]">{searchTerm ? "Nenhuma música encontrada." : "Nenhum arquivo MP3 nesta pasta."}</p>
+          <span class="max-w-[230px] text-[0.8rem] leading-[1.6]">{searchTerm ? "Tente outro nome ou limpe a busca." : "Escolha outra pasta pelo ícone acima."}</span>
+        </div>
+      {/if}
+    </div>
   {:else if !$choosingFolder}
     <div class="flex flex-1 flex-col items-center justify-center gap-3 px-3 py-8 text-center text-[#637184]">
       <Icon icon={folderIcon} width="36" />
