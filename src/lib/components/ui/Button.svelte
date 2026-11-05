@@ -11,7 +11,7 @@
     muted: "bg-transparent text-muted-foreground hover:bg-primary/7 hover:text-primary",
     danger: "bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/60",
     option: "bg-transparent text-foreground hover:bg-primary/7 aria-pressed:bg-primary/7 aria-pressed:text-primary",
-    surface: "border border-border bg-muted text-card-foreground hover:bg-primary/7",
+    surface: "border border-border bg-primary/7 text-card-foreground hover:bg-primary/12",
   };
   const sizes = {
     md: "px-3 py-2.5 text-sm",
