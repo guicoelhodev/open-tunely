@@ -1,7 +1,7 @@
 # Project context
 
-- Local Tauri 2 app with Svelte 5 and a Rust backend. Linux x64 is the initial target; Windows validation, AppImage packaging, and GitHub releases are deferred.
-- The app manages private yt-dlp and FFmpeg/ffprobe binaries instead of relying on user-installed tools or Python. Local setup downloads pinned builds and verifies SHA-256 checksums; future releases should bundle everything in one package.
+- Local Tauri 2 app with Svelte 5 and a Rust backend. Linux AppImage and Windows x64 NSIS are the packaging targets. GitHub Actions builds run on master pushes and manual requests. Successful master builds update one public latest release with stable download links; branch builds provide test artifacts. Debian packaging is deferred. Windows desktop behavior requires validation.
+- The app manages private yt-dlp and FFmpeg/ffprobe binaries instead of relying on user-installed tools or Python. Local setup downloads pinned builds and verifies SHA-256 checksums; desktop packages bundle the tools and Deno runtime.
 - `npm run dev` starts Tauri and Vite. `npm run dev:web` serves only the frontend and cannot invoke Rust. Keep the Tauri JavaScript packages and Rust crates on matching major/minor versions.
 - Search automatically detects URL input with a regex in Rust. Names/artists use yt-dlp `ytsearch1`; YouTube watch, short-link, Shorts, embed and live URLs are validated and normalized to one HTTPS video URL, dropping playlist/tracking parameters. Unsupported video links are rejected, and `--no-playlist` keeps resolution to a single video. Both paths return `{ id, title, channel }`; channel is optional metadata. The result card can be dismissed without affecting playback or queued downloads.
 - YouTube previews resolve a temporary HTTPS audio URL, preferring M4A. Extraction is serialized, uses cancellation tickets, and has a 45-second deadline. Linux cancellation terminates the process group; stale tickets cannot cancel newer previews.

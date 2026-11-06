@@ -28,7 +28,7 @@
   async function preview() {
     if (!song || previewLoading) return;
     const selected = song;
-    await playTrack({ id: selected.id, title: selected.title, subtitle: selected.channel ?? "YouTube", load: async (signal) => {
+    await playTrack({ id: selected.id, title: selected.title, subtitle: selected.channel ?? "YouTube", refreshOnPlaybackError: true, load: async (signal) => {
       const ticket = await reservePreview();
       const cancel = () => cancelPreview(ticket);
       if (signal.aborted) { cancel(); signal.throwIfAborted(); }

@@ -5,8 +5,10 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 prefix="$work/install"
+link_flags=""
+case "$(uname -s)" in MINGW*|MSYS*) link_flags="-static" ;; esac
 fetch() {
-  curl --fail --location --retry 3 "$1" -o "$work/$2"
+  curl --fail --location --retry 5 --retry-all-errors --connect-timeout 30 "$1" -o "$work/$2"
   echo "$3  $work/$2" | sha256sum --check -
 }
 fetch https://ffmpeg.org/releases/ffmpeg-8.0.tar.xz ffmpeg.tar.xz b2751fccb6cc4c77708113cd78b561059b6fa904b24162fa0be2d60273d27b8e
@@ -29,10 +31,10 @@ PKG_CONFIG_PATH="$prefix/lib/pkgconfig" ./configure \
   --enable-demuxer=mov,matroska,ogg,mp3,aac,flac,wav \
   --enable-muxer=mp3,mp4,ipod --enable-bsf=aac_adtstoasc --enable-protocol=file,pipe \
   --enable-filter=aresample,aformat,anull --enable-parser=aac,opus,vorbis,mpegaudio,flac \
-  --extra-cflags="-I$prefix/include" --extra-ldflags="-L$prefix/lib"
-make -j"${JOBS:-4}" ffmpeg ffprobe
+  --extra-cflags="-I$prefix/include" --extra-ldflags="-L$prefix/lib $link_flags"
 suffix=""
 case "$(uname -s)" in MINGW*|MSYS*) suffix=.exe ;; esac
+make -j"${JOBS:-4}" "ffmpeg$suffix" "ffprobe$suffix"
 out="${FFMPEG_OUTPUT:-$root/src-tauri/binaries}"
 mkdir -p "$out"
 cp "ffmpeg$suffix" "ffprobe$suffix" "$out/"

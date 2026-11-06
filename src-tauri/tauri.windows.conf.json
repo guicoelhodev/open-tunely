@@ -1,0 +1,26 @@
+{
+  "bundle": {
+    "targets": [
+      "nsis"
+    ],
+    "resources": [
+      "binaries/yt-dlp.exe",
+      "binaries/deno.exe",
+      "binaries/deno-LICENSE.md",
+      "binaries/ffmpeg.exe",
+      "binaries/ffprobe.exe",
+      "binaries/ffmpeg-LICENSE.txt",
+      "icons/LICENSE.txt"
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico"
+      }
+    }
+  }
+}

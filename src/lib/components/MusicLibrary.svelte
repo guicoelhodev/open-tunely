@@ -128,7 +128,7 @@
     <div class="-mx-1 flex min-h-0 flex-1 flex-col overflow-y-auto px-1" onscroll={() => trackActions?.dismiss()}>
       <div class="sticky top-0 z-10 shrink-0 bg-card py-3 pr-4">
         <label for="library-query" class="sr-only">{m.text_search_my_library({}, { locale: $locale })}</label>
-        <div class="relative">
+        <div class="relative mx-2">
           <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground" aria-hidden="true"><Icon icon={searchIcon} width="18" /></span>
           <input id="library-query" type="search" bind:value={query} placeholder={m.text_search_library({}, { locale: $locale })}
             class="w-full min-w-0 rounded-md border border-input bg-card py-2.5 pr-3 pl-10 text-sm focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-[3px]" />
@@ -176,9 +176,12 @@
   <TrackActions bind:this={trackActions} onbeforechange={(track) => { if (active?.id === track.path) stop(); }} onnotice={(message) => error = message} />
 
   <footer aria-label={m.text_about_and_app_preferences({}, { locale: $locale })} class="mr-4 mt-5 flex shrink-0 items-center justify-between gap-3 border-t border-border px-1 pt-5">
-    <div class="min-w-0">
-      <p class="truncate text-base font-bold text-foreground">Open Tunely</p>
-      <p class="mt-0.5 text-xs text-muted-foreground">v0.0.1</p>
+    <div class="flex min-w-0 items-center gap-2.5">
+      <img src="/brand/orbit.svg" alt="" width="36" height="36" class="size-9 shrink-0" />
+      <div class="min-w-0">
+        <p class="truncate text-base font-bold text-foreground">Open Tunely</p>
+        <p class="mt-0.5 text-xs text-muted-foreground">v0.1.0</p>
+      </div>
     </div>
     <div class="flex shrink-0 items-center gap-1.5" role="group" aria-label={m.text_app_preferences({}, { locale: $locale })}>
       <Button type="button" onclick={toggleColorMode} aria-label={m.text_dark_mode({}, { locale: $locale })} aria-pressed={$appearance.mode === "dark"} title={$appearance.mode === "dark" ? m.text_enable_light_mode({}, { locale: $locale }) : m.text_enable_dark_mode({}, { locale: $locale })}

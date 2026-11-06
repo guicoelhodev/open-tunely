@@ -1,17 +1,21 @@
-name: Linux packages
+name: Desktop packages
 
 on:
-  workflow_dispatch:
   push:
-    tags: ['v*']
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-packages-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  linux:
     runs-on: ubuntu-22.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       APPIMAGE_EXTRACT_AND_RUN: '1'
     steps:
@@ -26,8 +30,8 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             build-essential pkg-config nasm curl wget file unzip patchelf \
             libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
-            libssl-dev libfuse2 libgstreamer1.0-dev \
-            libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-good \
+            libssl-dev libfuse2 xvfb xauth dbus-x11 gstreamer1.0-tools \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
             gstreamer1.0-plugins-bad gstreamer1.0-libav
       - name: Install Rust
         run: |
@@ -35,15 +39,95 @@ jobs:
           rustup default stable
       - run: npm ci
       - run: npm run setup:tools
-      - name: Build Debian and AppImage packages
-        run: npm run tauri build -- --bundles deb,appimage
+      - run: npm run build
+      - run: npm run check
+      - run: npm run test:player
+      - run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
+      - name: Build AppImage
+        run: npm run tauri build -- --bundles appimage
+      - name: Fix runtime and repack AppImage
+        run: |
+          app="$PWD/src-tauri/target/release/bundle/appimage/Open Tunely.AppDir"
+          bash scripts/fix-appimage-runtime.sh "$app"
+          mkdir -p "$RUNNER_TEMP/appimage-plugin" dist
+          cd "$RUNNER_TEMP/appimage-plugin"
+          "$HOME/.cache/tauri/linuxdeploy-plugin-appimage.AppImage" --appimage-extract > /dev/null
+          ARCH=x86_64 squashfs-root/usr/bin/appimagetool "$app" "$GITHUB_WORKSPACE/dist/Open-Tunely-linux-x64.AppImage"
       - name: Check packaged tools and media support
-        run: bash scripts/check-appimage.sh src-tauri/target/release/bundle/appimage/*.AppImage
+        run: bash scripts/check-appimage.sh dist/Open-Tunely-linux-x64.AppImage
+      - name: Check AppImage startup on a virtual display
+        run: bash scripts/check-appimage-startup.sh dist/Open-Tunely-linux-x64.AppImage
       - uses: actions/upload-artifact@v6
         with:
           name: open-tunely-linux-x64
           if-no-files-found: error
           compression-level: 0
-          path: |
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/appimage/*.AppImage
+          path: dist/*.AppImage
+
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            make curl tar diffutils
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-nasm
+      - name: Compile minimal FFmpeg and ffprobe
+        shell: msys2 {0}
+        run: bash scripts/build-ffmpeg.sh
+      - run: npm ci
+      - name: Prepare Windows tools and validate conversion
+        run: npm run setup:tools
+      - run: npm run build
+      - run: npm run check
+      - run: npm run test:player
+      - run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
+      - name: Build Windows installer
+        run: npm run tauri build -- --bundles nsis
+      - name: Stage Windows installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $installers = @(Get-ChildItem src-tauri/target/release/bundle/nsis/*-setup.exe)
+          if ($installers.Count -ne 1) { throw "Expected exactly one NSIS installer" }
+          Copy-Item $installers[0].FullName dist/Open-Tunely-windows-x64-setup.exe
+      - uses: actions/upload-artifact@v6
+        with:
+          name: open-tunely-windows-x64
+          if-no-files-found: error
+          compression-level: 0
+          path: dist/*-setup.exe
+
+  release:
+    if: ${{ github.ref == 'refs/heads/master' }}
+    needs: [linux, windows]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: open-tunely-*
+          merge-multiple: true
+          path: dist
+      - name: Update public rolling release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          COMMIT: ${{ github.sha }}
+        run: bash scripts/publish-release.sh dist

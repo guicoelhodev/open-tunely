@@ -259,7 +259,21 @@ fn rename_track_file(path: &Path, destination: &Path) -> Result<(), String> {
         }
     };
     #[cfg(target_os = "windows")]
-    let result = std::fs::rename(path, destination);
+    let result = {
+        use std::os::windows::ffi::OsStrExt;
+        #[link(name = "kernel32")]
+        unsafe extern "system" {
+            fn MoveFileW(existing: *const u16, new: *const u16) -> i32;
+        }
+        let from: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+        let to: Vec<u16> = destination.as_os_str().encode_wide().chain(Some(0)).collect();
+        // MoveFileW fails if the destination exists; std::fs::rename replaces it.
+        if unsafe { MoveFileW(from.as_ptr(), to.as_ptr()) } != 0 {
+            Ok(())
+        } else {
+            Err(std::io::Error::last_os_error())
+        }
+    };
     #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     let result: std::io::Result<()> = Err(std::io::ErrorKind::Unsupported.into());
     result.map_err(|error| {

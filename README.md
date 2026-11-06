@@ -1,120 +1,67 @@
 <div align="center">
 
-<img src="static/favicon.png" alt="Open Tunely icon" width="96" />
+<img src="static/brand/orbit.svg" alt="Open Tunely" width="104" height="104" />
 
 # Open Tunely
 
-**Find a song, listen, and make it part of your own music library.**
+**Find a song. Take a listen. Make it part of your library.**
 
-A desktop music downloader and player built with Tauri, Svelte, and Rust.
+A free desktop app for discovering music and enjoying your own MP3 collection.
+
+[![Download for Windows](https://img.shields.io/badge/Download-Windows_x64-0891b2?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/guicoelhodev/open-tunely/releases/download/latest/Open-Tunely-windows-x64-setup.exe)
+[![Download for Linux](https://img.shields.io/badge/Download-Linux_x64-0891b2?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/guicoelhodev/open-tunely/releases/download/latest/Open-Tunely-linux-x64.AppImage)
 
 [![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](https://tauri.app/)
 [![Svelte 5](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white)](https://svelte.dev/)
 [![Rust](https://img.shields.io/badge/Rust-backend-DEA584?logo=rust&logoColor=black)](https://www.rust-lang.org/)
-[![Platform](https://img.shields.io/badge/platform-Linux%20x64-FCC624?logo=linux&logoColor=black)](#getting-started)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%26%20Linux%20x64-0891b2)](#get-started)
 [![Repository views](https://hits.dwyl.com/guicoelhodev/open-tunely.svg)](https://hits.dwyl.com/guicoelhodev/open-tunely)
 
-[Features](#features) · [Getting started](#getting-started) · [Development](#development) · [Contributing](#contributing)
+[Features](#make-yourself-at-home) · [Get started](#get-started) · [All downloads](https://github.com/guicoelhodev/open-tunely/releases/tag/latest) · [Feedback](https://github.com/guicoelhodev/open-tunely/issues)
 
 </div>
 
-> **Early development:** Linux x64 is the current validated platform. Distribution targets are Windows and Linux (`.deb` and `.AppImage`); Windows support and AppImage packaging are still being validated.
+## Make yourself at home
 
-## Features
+| Discover | Build your library | Press play |
+| --- | --- | --- |
+| Search by song, artist, or YouTube link. Preview a result before saving it. | Save permitted audio as MP3, choose your folder, and follow downloads in the queue. | Enjoy local tracks with seeking, volume, shuffle, and previous/next controls. |
 
-- **Search and preview** — find the first YouTube result for a song, artist, or video URL and listen before downloading.
-- **Download to MP3** — follow progress in a background queue, then retry or remove failed downloads.
-- **Your local library** — choose a folder, browse its MP3 files, and rename or delete tracks.
-- **One shared player** — play local tracks and YouTube previews with seeking, volume, shuffle, and previous/next controls.
-- **Make it yours** — choose a color theme and use the interface in English, Brazilian Portuguese, or Spanish. Your preferences are saved locally.
-- **Managed media tools** — use project-managed yt-dlp, FFmpeg, ffprobe, and Deno binaries without installing them globally or setting up Python.
+- **Your files, your folder.** Browse your MP3s and rename or remove tracks from the app.
+- **Your colors.** Pick a light or dark appearance with cyan, indigo, pink, or neutral accents.
+- **Your language.** Available in English, Brazilian Portuguese, and Spanish.
+- **Ready to run.** No Python, FFmpeg setup, or developer tools required.
 
-## Getting started
+## Get started
 
-### Requirements
+1. Download the app for **Windows x64** or **Linux x64** using the buttons above. No GitHub account needed.
+2. Open the Windows installer, or make the Linux AppImage executable and open it.
+3. Search for something to listen to, or choose a folder to enjoy your existing MP3 library.
 
-- Linux x64
-- Node.js and npm
-- The Rust toolchain and [Tauri's Linux prerequisites](https://v2.tauri.app/start/prerequisites/)
-- Internet access, Bash, `curl`, `tar` with Gzip/XZ support, `unzip`, `sha256sum`, GCC, make, pkg-config, and NASM for media tool setup; `patchelf` for AppImage packaging
-
-### Run locally
+<details>
+<summary>Opening the AppImage on Linux</summary>
 
 ```sh
-git clone https://github.com/guicoelhodev/open-tunely.git
-cd open-tunely
-npm install
-npm run setup:tools
-npm run dev
+chmod +x Open-Tunely-linux-x64.AppImage
+./Open-Tunely-linux-x64.AppImage
 ```
 
-The setup script downloads checksum-verified yt-dlp and Deno binaries and compiles FFmpeg/ffprobe with LAME for MP3 conversion. Tools are stored in `src-tauri/binaries/` and included in desktop packages. Build tools are required only on the development machine. FFmpeg/ffprobe are rebuilt each time setup runs.
-
-`npm run dev` opens the Tauri desktop window. Search, playback, and filesystem operations require that window. For frontend-only visual work, use `npm run dev:web`.
-
-## Using Open Tunely
-
-1. Search for a song, artist, or YouTube video URL and preview the result.
-2. Choose a music folder, or select **Download MP3** and choose a folder when prompted.
-3. Follow progress in the library's download queue. Downloads run one at a time, and you can keep searching while they run.
-4. Play tracks from your library. Right-click a track to rename or delete it.
-
-Files are saved as `Track title.mp3`. Existing files with the same name are not overwritten. The library lists MP3 files directly inside the selected folder, excluding subfolders and symbolic links; titles come from filenames. The selected folder is saved locally and restored when you reopen the app.
-
-## How it works
-
-| Layer | Tools and responsibilities |
-| --- | --- |
-| Interface | Svelte 5, TypeScript, Tailwind CSS, Iconify, and Paraglide for translations |
-| Desktop backend | Tauri 2 and Rust commands, with explicit paths to managed media tools |
-| Playback | A shared player for local files and temporary YouTube audio URLs; local files stream through a loopback HTTP server with seeking support |
-| Downloads | A frontend queue tracks progress while Rust stages conversion and publishes completed MP3 files |
-
-See [the project context](docs/context.md) for more architectural details.
-
-## Development
-
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Start the desktop app in development mode |
-| `npm run dev:web` | Start the frontend only |
-| `npm run setup:tools` | Download yt-dlp and Deno and compile FFmpeg/ffprobe |
-| `bash scripts/build-ffmpeg.sh` | Compile only FFmpeg/ffprobe |
-| `npm run check:tools` | Validate offline yt-dlp to MP3 conversion |
-| `npm run check` | Check Svelte and TypeScript |
-| `npm run build` | Build the frontend |
-| `cargo test --manifest-path src-tauri/Cargo.toml` | Run backend tests |
-| `cargo fmt --manifest-path src-tauri/Cargo.toml --check` | Check Rust formatting |
-
-To build the Linux packages after preparing the media tools:
+If your system does not provide FUSE:
 
 ```sh
-npm run tauri build
+./Open-Tunely-linux-x64.AppImage --appimage-extract-and-run
 ```
 
-The Linux configuration generates only `.deb` and `.AppImage` packages under `src-tauri/target/release/bundle/`. To generate only the AppImage, run `npm run tauri build -- --bundles appimage`. The AppImage includes GStreamer for audio playback and is larger than the Debian package.
+</details>
 
-For distribution builds, use Ubuntu 22.04 with Tauri's native prerequisites, `patchelf`, and the GStreamer base, good, bad, and libav plugin packages. The `Linux packages` GitHub Actions workflow prepares this environment, builds both formats, checks the AppImage payload, and uploads downloadable workflow artifacts. Run it manually from Actions or with a `v*` tag; it does not publish a release.
+The Windows installer is unsigned and may show a security prompt. It downloads WebView2 if your system needs it. Internet access is required for search, online previews, and downloads.
 
-Validate a generated AppImage with `bash scripts/check-appimage.sh path/to/app.AppImage`. To launch it, make it executable with `chmod +x path/to/app.AppImage` and run it. On systems without FUSE, use `path/to/app.AppImage --appimage-extract-and-run`. Payload checks do not replace desktop tests of playback, downloads, and folder selection on the supported distributions.
+**Early release:** help us improve by [reporting a problem](https://github.com/guicoelhodev/open-tunely/issues). Include your operating system, what happened, and the steps to reproduce it.
 
-The FFmpeg build supports AAC, Opus, Vorbis, MP3, FLAC, and basic PCM inputs, with MP3 output. yt-dlp handles network downloads. Set `JOBS` to control compilation parallelism or `FFMPEG_OUTPUT` to choose a separate output directory. The output includes build configuration and license texts. Build Linux releases on the oldest supported distribution to avoid requiring a newer glibc.
+Download only content you own or have permission to save. Open Tunely is an independent project and is not affiliated with YouTube or Google.
 
-The FFmpeg script also includes an MSYS2 MINGW64 build path for Windows. This does not yet provide a working Windows app setup: `npm run setup:tools` currently supports Linux x64 only.
+---
 
-Frontend services live in `src/lib/services/`, UI components in `src/lib/components/`, translations in `src/languages/`, and backend code in `src-tauri/src/`.
+Want to contribute or run the project locally? See the [development guide](docs/development.md).
 
-## Current limitations
-
-- Windows setup, playback, and packaging have not been validated. The AppImage has been built and opened locally on Arch Linux; cross-distribution playback and the Ubuntu workflow still need validation. Public releases are pending.
-- YouTube extraction depends on yt-dlp compatibility and video availability.
-- Playback depends on the platform WebView and available codecs.
-- Duplicate detection uses the destination filename, not a persistent video ID index.
-
-## Contributing
-
-Bug reports and focused contributions are welcome. When reporting a problem, include your Linux distribution, steps to reproduce, and relevant error output. For changes, describe the expected behavior and run the relevant checks above.
-
-## Acknowledgments
-
-Built with [Tauri](https://tauri.app/), [Svelte](https://svelte.dev/), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [FFmpeg](https://ffmpeg.org/), [Tailwind CSS](https://tailwindcss.com/), and [Iconify](https://iconify.design/). Managed media tools retain their upstream licenses; the setup includes FFmpeg, LAME, and Deno license texts alongside their binaries.
+Built with [Tauri](https://tauri.app/), [Svelte](https://svelte.dev/), [yt-dlp](https://github.com/yt-dlp/yt-dlp), and [FFmpeg](https://ffmpeg.org/). Orbit artwork uses [Lucide](https://lucide.dev/) under its [license](docs/licenses/lucide.txt). Bundled tools retain their upstream licenses.

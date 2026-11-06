@@ -15,6 +15,8 @@ use tauri::Manager;
 mod audio_http;
 mod download;
 mod library;
+#[cfg(windows)]
+mod windows_job;
 
 const PREVIEW_TIMEOUT: Duration = Duration::from_secs(45);
 
@@ -64,10 +66,14 @@ impl PreviewState {
 struct YtdlpChild {
     child: Child,
     reaped: bool,
+    #[cfg(windows)]
+    job: Option<windows_job::WindowsJob>,
 }
 
 impl Drop for YtdlpChild {
     fn drop(&mut self) {
+        #[cfg(windows)]
+        drop(self.job.take());
         if self.reaped {
             return;
         }
@@ -76,6 +82,14 @@ impl Drop for YtdlpChild {
             // The child is placed in a new group before spawning. It is not reaped
             // until this guard drops, so its PID cannot be reused during cleanup.
             libc::kill(-(self.child.id() as i32), libc::SIGKILL);
+        }
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            let _ = Command::new("taskkill.exe")
+                .args(["/PID", &self.child.id().to_string(), "/T", "/F"])
+                .creation_flags(0x08000000)
+                .status();
         }
         let _ = self.child.kill();
         let _ = self.child.wait();
@@ -140,7 +154,13 @@ fn run_ytdlp_process_with_progress(
             .spawn()
             .map_err(|error| format!("Não foi possível executar o yt-dlp: {error}"))?,
         reaped: false,
+        #[cfg(windows)]
+        job: None,
     };
+    #[cfg(windows)]
+    {
+        child.job = Some(windows_job::WindowsJob::attach(&child.child)?);
+    }
     let stdout = child
         .child
         .stdout
@@ -203,14 +223,32 @@ fn run_ytdlp_process_with_progress(
     }
     #[cfg(not(unix))]
     std::thread::scope(|scope| {
-        let read = |mut stream: Box<dyn Read + Send>| {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let read = |mut stream: Box<dyn Read + Send>,
+                    sender: std::sync::mpsc::Sender<(Vec<u8>, bool)>,
+                    is_stderr| {
             let mut bytes = Vec::new();
-            stream.read_to_end(&mut bytes).map(|_| bytes)
+            let mut buffer = [0; 8192];
+            loop {
+                match stream.read(&mut buffer) {
+                    Ok(0) => return Ok::<_, std::io::Error>(bytes),
+                    Ok(size) => {
+                        bytes.extend_from_slice(&buffer[..size]);
+                        let _ = sender.send((buffer[..size].to_vec(), is_stderr));
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+                    Err(error) => return Err(error),
+                }
+            }
         };
-        let stdout = scope.spawn(move || read(Box::new(stdout)));
-        let stderr = scope.spawn(move || read(Box::new(stderr)));
+        let stderr_sender = sender.clone();
+        let stdout = scope.spawn(move || read(Box::new(stdout), sender, false));
+        let stderr = scope.spawn(move || read(Box::new(stderr), stderr_sender, true));
         let started = Instant::now();
         let status = loop {
+            for (bytes, is_stderr) in receiver.try_iter() {
+                progress(&bytes, is_stderr);
+            }
             if cancelled.load(Ordering::SeqCst) {
                 break Err("A preparação do áudio foi cancelada.".to_string());
             }
@@ -240,6 +278,9 @@ fn run_ytdlp_process_with_progress(
             .join()
             .map_err(|_| "A leitura da resposta foi interrompida.")?
             .map_err(|_| "Não foi possível ler a resposta do yt-dlp.")?;
+        for (bytes, is_stderr) in receiver.try_iter() {
+            progress(&bytes, is_stderr);
+        }
         Ok(Output {
             status,
             stdout,
@@ -316,6 +357,11 @@ fn search_target(query: &str) -> Result<String, String> {
 }
 
 fn configure_ytdlp_runtime(command: &mut Command, deno: &std::path::Path) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
     let mut runtime = std::ffi::OsString::from("deno:");
     runtime.push(deno.as_os_str());
     command.args(["--no-js-runtimes", "--js-runtimes"]).arg(runtime);
@@ -383,16 +429,21 @@ fn tool_binary(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 }
 
 fn private_tool(app: &tauri::AppHandle, name: &str) -> Result<PathBuf, String> {
+    let name = if cfg!(windows) {
+        format!("{name}.exe")
+    } else {
+        name.to_string()
+    };
     let binary = if cfg!(debug_assertions) {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("binaries")
-            .join(name)
+            .join(&name)
     } else {
         app.path()
             .resource_dir()
             .map_err(|error| format!("Não foi possível localizar as ferramentas: {error}"))?
             .join("binaries")
-            .join(name)
+            .join(&name)
     };
     if !binary.is_file() {
         return Err(format!(
@@ -432,6 +483,7 @@ fn preview_with_ytdlp(binary: PathBuf, deno: PathBuf, id: &str, cancelled: &Atom
             "--no-playlist",
             "--skip-download",
             "--get-url",
+            "--check-formats",
             "--format",
             "bestaudio[ext=m4a][protocol=https]/bestaudio[protocol=https]",
             "--socket-timeout",
