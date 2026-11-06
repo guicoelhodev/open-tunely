@@ -1,8 +1,6 @@
 name: Desktop packages
 
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
     inputs:
       tag:
@@ -11,7 +9,7 @@ on:
         type: string
 
 env:
-  APP_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || '0.1.0' }}
+  APP_VERSION: ${{ inputs.tag }}
 
 concurrency:
   group: desktop-packages-${{ github.ref }}
@@ -29,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.sha }}
+          ref: ${{ inputs.tag }}
       - name: Validate release tag
         if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
@@ -88,7 +86,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.sha }}
+          ref: ${{ inputs.tag }}
       - name: Validate release tag
         if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
@@ -149,7 +147,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.sha }}
+          ref: ${{ inputs.tag }}
       - uses: actions/download-artifact@v7
         with:
           pattern: open-tunely-*
@@ -159,5 +157,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          COMMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.sha }}
+          COMMIT: ${{ inputs.tag }}
         run: bash scripts/publish-release.sh dist
