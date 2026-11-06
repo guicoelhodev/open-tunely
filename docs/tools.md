@@ -132,7 +132,7 @@ opus vorbis matroska isomp4
 
 AAC decoding requires either the `libav` or `faad` plugin. These are the verifier's requirements, not proof that each plugin is individually minimal. Bundled FFmpeg and GStreamer serve different workflows; removing one because the other is present can break playback.
 
-[fix-appimage-runtime.sh](../scripts/fix-appimage-runtime.sh) configures runtime paths and removes Python bindings unnecessary for HTML audio. Validate playback after changing runtime libraries or plugin selection.
+[fix-appimage-runtime.sh](../scripts/fix-appimage-runtime.sh) sources GTK/GStreamer hooks before setting bundled library paths, then executes the native application directly. Avoid starting a host shell after adding bundled libraries: its readline dependency may be incompatible. The script also removes Python bindings unnecessary for HTML audio. Validate playback after changing runtime libraries or plugin selection.
 
 Using distribution-provided tools in a `.deb` requires changing path resolution and declaring package dependencies and compatible versions. Removing bundled resources alone breaks tool discovery. Test installed packages outside the checkout.
 
@@ -167,6 +167,6 @@ Validate a candidate tool set against the following scenarios:
 
 Rust tests in [lib.rs](../src-tauri/src/lib.rs) and [download.rs](../src-tauri/src/download.rs) cover argument contracts, validation, progress, pipes, deadlines, and publication. Tests using simulated processes do not replace real-tool integration checks.
 
-`scripts/check-appimage.sh <package.AppImage>` verifies payload integrity, executable versions, and plugin presence. Desktop playback still requires a graphical smoke test.
+`scripts/check-appimage.sh <package.AppImage>` verifies payload integrity, executable versions, and plugin presence. `scripts/check-appimage-startup.sh <package.AppImage>` checks that the final package stays running for 15 seconds under D-Bus and Xvfb without loader errors. Interactive playback still requires desktop testing.
 
 For each size-reduction experiment, retain versions and hashes, effective FFmpeg configuration, executable and compressed package sizes, postprocessor commands, and verification results. Revalidate when changing yt-dlp, format policy, JavaScript runtime, or player features. Treat the build configuration as a compatibility baseline rather than a proven absolute minimum.
