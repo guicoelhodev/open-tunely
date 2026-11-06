@@ -32,9 +32,9 @@ PKG_CONFIG_PATH="$prefix/lib/pkgconfig" ./configure \
   --enable-muxer=mp3,mp4,ipod --enable-bsf=aac_adtstoasc --enable-protocol=file,pipe \
   --enable-filter=aresample,aformat,anull --enable-parser=aac,opus,vorbis,mpegaudio,flac \
   --extra-cflags="-I$prefix/include" --extra-ldflags="-L$prefix/lib $link_flags"
-make -j"${JOBS:-4}" ffmpeg ffprobe
 suffix=""
 case "$(uname -s)" in MINGW*|MSYS*) suffix=.exe ;; esac
+make -j"${JOBS:-4}" "ffmpeg$suffix" "ffprobe$suffix"
 out="${FFMPEG_OUTPUT:-$root/src-tauri/binaries}"
 mkdir -p "$out"
 cp "ffmpeg$suffix" "ffprobe$suffix" "$out/"
