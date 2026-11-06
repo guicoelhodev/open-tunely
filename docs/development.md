@@ -41,12 +41,12 @@ The setup script downloads checksum-verified yt-dlp and Deno binaries and compil
 
 The **Desktop packages** workflow builds AppImage and Windows x64 NSIS installers on every push to `master`, including merges. Manual runs are also available. Branch runs upload Actions artifacts for testing; only `master` publishes public downloads.
 
-A single mutable release uses the `latest` tag and fixed asset names. Both platform builds must pass before publication. The workflow replaces those assets, updates checksums and moves the tag to the built commit. Published release downloads work without a GitHub account; Actions artifacts do not. The first successful publication also removes the superseded `test-42234798019-1` draft release. Keep release immutability disabled for this rolling release.
+Manual runs build the selected existing version tag and upload both platform packages to its GitHub Release. After both uploads succeed, the release is marked latest. Fixed asset names allow the README links to follow that release automatically.
 
 Stable links:
 
-- `https://github.com/guicoelhodev/open-tunely/releases/download/latest/Open-Tunely-windows-x64-setup.exe`
-- `https://github.com/guicoelhodev/open-tunely/releases/download/latest/Open-Tunely-linux-x64.AppImage`
+- `https://github.com/guicoelhodev/open-tunely/releases/latest/download/Open-Tunely-windows-x64-setup.exe`
+- `https://github.com/guicoelhodev/open-tunely/releases/latest/download/Open-Tunely-linux-x64.AppImage`
 
 The Linux runner uses Ubuntu 22.04 with Tauri and GStreamer dependencies. It builds the AppImage, applies `scripts/fix-appimage-runtime.sh`, repacks it, and runs `scripts/check-appimage.sh` plus a virtual-display startup smoke test. Locally, use `npm run tauri build -- --bundles appimage` after preparing tools. For runtime fixes, apply the same postprocessing steps as the workflow. Make AppImages executable before opening; use `--appimage-extract-and-run` when FUSE is unavailable.
 

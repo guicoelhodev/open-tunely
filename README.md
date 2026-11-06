@@ -8,9 +8,9 @@
 
 A free desktop app for discovering music and enjoying your own MP3 collection.
 
-### [Download for Windows (64-bit)](https://github.com/guicoelhodev/open-tunely/releases/download/latest/Open-Tunely-windows-x64-setup.exe)
+### [Download for Windows (64-bit)](https://github.com/guicoelhodev/open-tunely/releases/latest/download/Open-Tunely-windows-x64-setup.exe)
 
-### [Download for Linux (AppImage)](https://github.com/guicoelhodev/open-tunely/releases/download/latest/Open-Tunely-linux-x64.AppImage)
+### [Download for Linux (AppImage)](https://github.com/guicoelhodev/open-tunely/releases/latest/download/Open-Tunely-linux-x64.AppImage)
 
 Choose your operating system above to download directly. No GitHub account needed.
 
@@ -20,7 +20,7 @@ Choose your operating system above to download directly. No GitHub account neede
 [![Platform](https://img.shields.io/badge/platform-Windows%20%26%20Linux%20x64-0891b2)](#get-started)
 [![Repository views](https://hits.dwyl.com/guicoelhodev/open-tunely.svg)](https://hits.dwyl.com/guicoelhodev/open-tunely)
 
-[Features](#make-yourself-at-home) · [Get started](#get-started) · [All downloads](https://github.com/guicoelhodev/open-tunely/releases/tag/latest) · [Feedback](https://github.com/guicoelhodev/open-tunely/issues)
+[Features](#make-yourself-at-home) · [Get started](#get-started) · [All downloads](https://github.com/guicoelhodev/open-tunely/releases/latest) · [Feedback](https://github.com/guicoelhodev/open-tunely/issues)
 
 </div>
 
