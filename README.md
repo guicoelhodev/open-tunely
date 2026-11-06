@@ -8,8 +8,11 @@
 
 A free desktop app for discovering music and enjoying your own MP3 collection.
 
-[![Download for Windows](https://img.shields.io/badge/Download-Windows_x64-0891b2?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/guicoelhodev/open-tunely/releases/download/latest/Open-Tunely-windows-x64-setup.exe)
-[![Download for Linux](https://img.shields.io/badge/Download-Linux_x64-0891b2?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/guicoelhodev/open-tunely/releases/download/latest/Open-Tunely-linux-x64.AppImage)
+### [Download for Windows (64-bit)](https://github.com/guicoelhodev/open-tunely/releases/download/latest/Open-Tunely-windows-x64-setup.exe)
+
+### [Download for Linux (AppImage)](https://github.com/guicoelhodev/open-tunely/releases/download/latest/Open-Tunely-linux-x64.AppImage)
+
+Choose your operating system above to download directly. No GitHub account needed.
 
 [![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](https://tauri.app/)
 [![Svelte 5](https://img.shields.io/badge/Svelte-5-FF3E00?logo=svelte&logoColor=white)](https://svelte.dev/)
@@ -34,7 +37,7 @@ A free desktop app for discovering music and enjoying your own MP3 collection.
 
 ## Get started
 
-1. Download the app for **Windows x64** or **Linux x64** using the buttons above. No GitHub account needed.
+1. Download the app for **Windows x64** or **Linux x64** using the links above. No GitHub account needed.
 2. Open the Windows installer, or make the Linux AppImage executable and open it.
 3. Search for something to listen to, or choose a folder to enjoy your existing MP3 library.
 
