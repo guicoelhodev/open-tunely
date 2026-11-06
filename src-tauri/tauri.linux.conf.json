@@ -15,7 +15,8 @@
       "binaries/deno-LICENSE.md",
       "binaries/ffmpeg",
       "binaries/ffprobe",
-      "binaries/ffmpeg-LICENSE.txt"
+      "binaries/ffmpeg-LICENSE.txt",
+      "icons/LICENSE.txt"
     ]
   }
 }

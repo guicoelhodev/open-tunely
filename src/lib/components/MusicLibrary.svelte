@@ -176,9 +176,12 @@
   <TrackActions bind:this={trackActions} onbeforechange={(track) => { if (active?.id === track.path) stop(); }} onnotice={(message) => error = message} />
 
   <footer aria-label={m.text_about_and_app_preferences({}, { locale: $locale })} class="mr-4 mt-5 flex shrink-0 items-center justify-between gap-3 border-t border-border px-1 pt-5">
-    <div class="min-w-0">
-      <p class="truncate text-base font-bold text-foreground">Open Tunely</p>
-      <p class="mt-0.5 text-xs text-muted-foreground">v0.0.1</p>
+    <div class="flex min-w-0 items-center gap-2.5">
+      <img src="/brand/orbit.svg" alt="" width="36" height="36" class="size-9 shrink-0" />
+      <div class="min-w-0">
+        <p class="truncate text-base font-bold text-foreground">Open Tunely</p>
+        <p class="mt-0.5 text-xs text-muted-foreground">v0.1.0</p>
+      </div>
     </div>
     <div class="flex shrink-0 items-center gap-1.5" role="group" aria-label={m.text_app_preferences({}, { locale: $locale })}>
       <Button type="button" onclick={toggleColorMode} aria-label={m.text_dark_mode({}, { locale: $locale })} aria-pressed={$appearance.mode === "dark"} title={$appearance.mode === "dark" ? m.text_enable_light_mode({}, { locale: $locale }) : m.text_enable_dark_mode({}, { locale: $locale })}
