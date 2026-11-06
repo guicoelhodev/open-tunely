@@ -73,6 +73,8 @@ jobs:
             linux-ubuntu22-rust-v1-${{ hashFiles('src-tauri/Cargo.lock') }}-
       - run: npm ci
       - run: npm run setup:tools
+      - name: Generate translations before checking frontend
+        run: npx --no-install paraglide-js compile --project ./src/project.inlang --outdir ./src/lib/paraglide --strategy localStorage baseLocale --emit-ts-declarations
       - run: npm run check
       - run: npm run test:player
       - run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
