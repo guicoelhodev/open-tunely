@@ -140,7 +140,7 @@ Using distribution-provided tools in a `.deb` requires changing path resolution 
 
 Windows resources use `.exe` names for yt-dlp, Deno, FFmpeg, and ffprobe, configured in [tauri.windows.conf.json](../src-tauri/tauri.windows.conf.json). Tool resolution appends the platform executable suffix. The setup downloads checksum-verified Windows x64 yt-dlp and Deno artifacts and expects FFmpeg/ffprobe to have been compiled under MSYS2 first. FFmpeg uses static MinGW linking to avoid depending on the build machine's runtime DLLs.
 
-The NSIS installer downloads WebView2 when needed. Tools run without console windows; cancellation and deadline cleanup request termination of the Windows process tree. Validate cleanup and playback on Windows independently of Linux GStreamer packaging.
+The NSIS installer downloads WebView2 when needed. Tools run without console windows; cancellation and deadline cleanup terminate an owned Windows Job Object, including descendants retaining output pipes. Validate cleanup and playback on Windows independently of Linux GStreamer packaging.
 
 ## Verification requirements
 

@@ -15,6 +15,8 @@ use tauri::Manager;
 mod audio_http;
 mod download;
 mod library;
+#[cfg(windows)]
+mod windows_job;
 
 const PREVIEW_TIMEOUT: Duration = Duration::from_secs(45);
 
@@ -64,10 +66,14 @@ impl PreviewState {
 struct YtdlpChild {
     child: Child,
     reaped: bool,
+    #[cfg(windows)]
+    job: Option<windows_job::WindowsJob>,
 }
 
 impl Drop for YtdlpChild {
     fn drop(&mut self) {
+        #[cfg(windows)]
+        drop(self.job.take());
         if self.reaped {
             return;
         }
@@ -148,7 +154,13 @@ fn run_ytdlp_process_with_progress(
             .spawn()
             .map_err(|error| format!("Não foi possível executar o yt-dlp: {error}"))?,
         reaped: false,
+        #[cfg(windows)]
+        job: None,
     };
+    #[cfg(windows)]
+    {
+        child.job = Some(windows_job::WindowsJob::attach(&child.child)?);
+    }
     let stdout = child
         .child
         .stdout
