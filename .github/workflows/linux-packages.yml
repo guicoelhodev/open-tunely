@@ -126,7 +126,7 @@ jobs:
           COMMIT: ${{ github.sha }}
           RELEASE_TAG: test-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
-          sha256sum dist/* > dist/SHA256SUMS.txt
+          (cd dist && sha256sum ./* > SHA256SUMS.txt)
           gh release create "$RELEASE_TAG" dist/* \
             --target "$COMMIT" --draft --prerelease \
             --title "Open Tunely test build $RELEASE_TAG" \
