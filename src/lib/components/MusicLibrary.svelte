@@ -26,6 +26,7 @@
   import { appearance, palettes, selectPalette, toggleColorMode } from "$lib/services/appearance.service";
   import { onMount, onDestroy, untrack } from "svelte";
 
+  const appVersion = import.meta.env.VITE_APP_VERSION ?? '0.1.0';
 
   const folderLabel = $derived.by(() => {
     if (!$library) return m.text_select_your_music_folder({}, { locale: $locale });
@@ -180,7 +181,7 @@
       <img src="/brand/orbit.svg" alt="" width="36" height="36" class="size-9 shrink-0" />
       <div class="min-w-0">
         <p class="truncate text-base font-bold text-foreground">Open Tunely</p>
-        <p class="mt-0.5 text-xs text-muted-foreground">v0.1.0</p>
+        <p class="mt-0.5 text-xs text-muted-foreground">{appVersion.startsWith('v') ? appVersion : `v${appVersion}`}</p>
       </div>
     </div>
     <div class="flex shrink-0 items-center gap-1.5" role="group" aria-label={m.text_app_preferences({}, { locale: $locale })}>

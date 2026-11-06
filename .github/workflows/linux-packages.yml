@@ -4,6 +4,14 @@ on:
   push:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag da versão para compilar (ex.: v0.2.0)'
+        required: true
+        type: string
+
+env:
+  APP_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || '0.1.0' }}
 
 concurrency:
   group: desktop-packages-${{ github.ref }}
@@ -20,6 +28,14 @@ jobs:
       APPIMAGE_EXTRACT_AND_RUN: '1'
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.sha }}
+      - name: Validate release tag
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]] || { echo "Invalid version tag: $RELEASE_TAG"; exit 1; }
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
@@ -40,6 +56,8 @@ jobs:
       - run: npm ci
       - run: npm run setup:tools
       - run: npm run build
+        env:
+          VITE_APP_VERSION: ${{ env.APP_VERSION }}
       - run: npm run check
       - run: npm run test:player
       - run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
@@ -69,6 +87,15 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.sha }}
+      - name: Validate release tag
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]] || { echo "Invalid version tag: $RELEASE_TAG"; exit 1; }
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
@@ -93,6 +120,8 @@ jobs:
       - name: Prepare Windows tools and validate conversion
         run: npm run setup:tools
       - run: npm run build
+        env:
+          VITE_APP_VERSION: ${{ env.APP_VERSION }}
       - run: npm run check
       - run: npm run test:player
       - run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
@@ -113,7 +142,7 @@ jobs:
           path: dist/*-setup.exe
 
   release:
-    if: ${{ github.ref == 'refs/heads/master' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
     needs: [linux, windows]
     runs-on: ubuntu-22.04
     permissions:
