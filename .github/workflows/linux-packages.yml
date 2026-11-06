@@ -24,6 +24,7 @@ jobs:
     timeout-minutes: 60
     env:
       APPIMAGE_EXTRACT_AND_RUN: '1'
+      VITE_APP_VERSION: ${{ inputs.tag }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -38,10 +39,16 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - name: Install native build and playback dependencies
+      - name: Update Ubuntu package indexes
+        timeout-minutes: 8
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
+          sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update --error-on=any
+      - name: Install native build and playback dependencies
+        timeout-minutes: 15
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo --preserve-env=DEBIAN_FRONTEND apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o DPkg::Lock::Timeout=120 install -y --no-install-recommends \
             build-essential pkg-config nasm curl wget file unzip patchelf \
             libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
             libssl-dev libfuse2 xvfb xauth dbus-x11 gstreamer1.0-tools \
@@ -51,11 +58,21 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal
           rustup default stable
+      - name: Cache Linux Rust compilation
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target/debug
+            src-tauri/target/release/build
+            src-tauri/target/release/deps
+            src-tauri/target/release/.fingerprint
+          key: linux-ubuntu22-rust-v1-${{ hashFiles('src-tauri/Cargo.lock') }}-${{ github.run_id }}
+          restore-keys: |
+            linux-ubuntu22-rust-v1-${{ hashFiles('src-tauri/Cargo.lock') }}-
       - run: npm ci
       - run: npm run setup:tools
-      - run: npm run build
-        env:
-          VITE_APP_VERSION: ${{ env.APP_VERSION }}
       - run: npm run check
       - run: npm run test:player
       - run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
