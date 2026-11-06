@@ -40,6 +40,7 @@ jobs:
       - run: npm run setup:tools
       - run: npm run build
       - run: npm run check
+      - run: npm run test:player
       - run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
       - name: Build AppImage
         run: npm run tauri build -- --bundles appimage
@@ -92,6 +93,7 @@ jobs:
         run: npm run setup:tools
       - run: npm run build
       - run: npm run check
+      - run: npm run test:player
       - run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
       - name: Build Windows installer
         run: npm run tauri build -- --bundles nsis

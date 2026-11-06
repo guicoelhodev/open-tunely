@@ -128,7 +128,7 @@
     <div class="-mx-1 flex min-h-0 flex-1 flex-col overflow-y-auto px-1" onscroll={() => trackActions?.dismiss()}>
       <div class="sticky top-0 z-10 shrink-0 bg-card py-3 pr-4">
         <label for="library-query" class="sr-only">{m.text_search_my_library({}, { locale: $locale })}</label>
-        <div class="relative">
+        <div class="relative mx-2">
           <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground" aria-hidden="true"><Icon icon={searchIcon} width="18" /></span>
           <input id="library-query" type="search" bind:value={query} placeholder={m.text_search_library({}, { locale: $locale })}
             class="w-full min-w-0 rounded-md border border-input bg-card py-2.5 pr-3 pl-10 text-sm focus-visible:outline-3 focus-visible:outline-solid focus-visible:outline-ring focus-visible:outline-offset-[3px]" />

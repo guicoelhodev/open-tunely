@@ -1,6 +1,6 @@
 import { writable, get } from "svelte/store";
 import type { LocalAudioSource } from "./local-audio.service";
-export type PlayerTrack = { id: string; title: string; subtitle?: string; load: (signal: AbortSignal) => Promise<LocalAudioSource> };
+export type PlayerTrack = { id: string; title: string; subtitle?: string; refreshOnPlaybackError?: boolean; load: (signal: AbortSignal) => Promise<LocalAudioSource> };
 export const player = writable({ track: null as PlayerTrack | null, url: "", playing: false, loading: false, error: "", shuffle: false });
 type PlayerQueue = PlayerTrack[] | (() => PlayerTrack[]);
 let queue: PlayerQueue = [];
@@ -20,11 +20,24 @@ export async function playTrack(track: PlayerTrack, tracks: PlayerQueue = [track
   controller = new AbortController();
   player.update(s => ({ ...s, track, loading: true }));
   try {
-    const loaded = await track.load(controller.signal);
-    if (generation !== current) { loaded.dispose(); return; }
-    source = loaded;
-    player.update(s => ({ ...s, url: loaded.url }));
-    if (audio) { audio.src = loaded.url; await audio.play(); }
+    for (let attempt = 0; ; attempt++) {
+      const loaded = await track.load(controller.signal);
+      if (generation !== current) { loaded.dispose(); return; }
+      source = loaded;
+      player.update(s => ({ ...s, url: loaded.url, error: "" }));
+      try {
+        if (audio) { audio.src = loaded.url; await audio.play(); }
+        break;
+      } catch (error) {
+        // Refresh a rejected temporary stream once. Permission/autoplay errors
+        // and failures to resolve the source are not retried.
+        if (generation !== current || attempt !== 0 || !track.refreshOnPlaybackError ||
+            !audio?.error || ![2, 3, 4].includes(audio.error.code)) throw error;
+        loaded.dispose(); source = undefined;
+        audio.pause(); audio.removeAttribute("src"); audio.load();
+        player.update(s => ({ ...s, url: "", error: "" }));
+      }
+    }
   } catch (error) {
     if (generation === current) player.update(s => ({ ...s, error: String(error) }));
   } finally {

@@ -26,10 +26,13 @@
     return item.percent === null ? m.text_preparing_download({}, { locale: activeLocale }) : `${Math.floor(item.percent)}%`;
   }
 
-  function positionPanel(event: ToggleEvent) {
-    if (event.newState !== "open" || !trigger || !panel) return;
+  function positionPanel(event?: ToggleEvent) {
+    if (!trigger || !panel || (event ? event.newState !== "open" : !panel.matches(":popover-open"))) return;
     const bounds = trigger.getBoundingClientRect();
-    panel.style.right = `${Math.max(8, window.innerWidth - bounds.right)}px`;
+    const width = Math.min(bounds.width, window.innerWidth - 16);
+    panel.style.width = `${width}px`;
+    panel.style.left = `${Math.max(8, Math.min(bounds.left, window.innerWidth - width - 8))}px`;
+    panel.style.right = "auto";
     panel.style.bottom = `${Math.max(8, window.innerHeight - bounds.top + 10)}px`;
     panel.style.maxHeight = `${Math.min(440, Math.max(120, bounds.top - 20))}px`;
   }
@@ -42,11 +45,11 @@
   }
 </script>
 
-<svelte:window onkeydown={close} />
+<svelte:window onkeydown={close} onresize={() => positionPanel()} />
 
 {#if pending.length}
   <div class="mt-auto shrink-0 pt-3.5 pr-4">
-    <Popover id="download-queue-panel" class="inset-[auto_24px_110px_auto] max-h-[min(440px,65dvh)] w-[min(350px,calc(100vw-48px))] overflow-y-auto rounded-xl p-3.5 shadow-[0_12px_40px_#17202a26]" bind:element={panel} onbeforetoggle={positionPanel}>
+    <Popover id="download-queue-panel" class="inset-[auto_24px_110px_auto] max-h-[min(440px,65dvh)] overflow-y-auto rounded-xl p-3.5 shadow-[0_12px_40px_#17202a26]" bind:element={panel} onbeforetoggle={positionPanel}>
       <header class="mb-3.5 flex items-center justify-between"><h3 class="text-[0.95rem] font-bold">Downloads</h3><span class="text-xs text-muted-foreground">{m.queued_count({ count: pending.length }, { locale: $locale })}</span></header>
       <ul class="m-0 list-none p-0" aria-label={m.text_download_queue({}, { locale: $locale })}>
         {#each $downloadQueue as item (item.key)}

@@ -52,4 +52,4 @@
     <span>{formatTime(seekableDuration)}</span>
   </div>
 </footer>
-<audio bind:this={audio} bind:currentTime bind:duration bind:volume preload="metadata" onemptied={() => { currentTime = 0; duration = 0; }} onplay={() => playing(true)} onpause={() => playing(false)} onended={() => { playing(false); stepPlayer(1, true); }} onerror={() => player.update(s => ({ ...s, playing: false, error: m.text_could_not_play_this_audio({}, { locale: $locale }) }))}><track kind="captions" /></audio>
+<audio bind:this={audio} bind:currentTime bind:duration bind:volume preload="metadata" onemptied={() => { currentTime = 0; duration = 0; }} onplay={() => playing(true)} onpause={() => playing(false)} onended={() => { playing(false); stepPlayer(1, true); }} onerror={() => { console.warn("Audio playback failed", { code: audio.error?.code, message: audio.error?.message }); player.update(s => ({ ...s, playing: false, error: m.text_could_not_play_this_audio({}, { locale: $locale }) })); }}><track kind="captions" /></audio>

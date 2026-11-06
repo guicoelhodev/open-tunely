@@ -45,13 +45,13 @@ Implementation: `search_target`, `search_with_ytdlp`, and `parse_song` in [lib.r
 ### Preview
 
 ```text
---skip-download --get-url
+--skip-download --get-url --check-formats
 --format bestaudio[ext=m4a][protocol=https]/bestaudio[protocol=https]
 --socket-timeout 15 --retries 1 --extractor-retries 1
 -- https://www.youtube.com/watch?v=<id>
 ```
 
-The result must contain exactly one HTTPS URL. Extraction is serialized, cancellable, and subject to a 45-second process deadline. The WebView downloads and decodes the preview; reducing bundled FFmpeg codecs does not reduce WebView playback requirements.
+The result must contain exactly one HTTPS URL. Selected formats are checked for downloadability before returning the URL. Extraction is serialized, cancellable, and subject to a 45-second process deadline. A rejected preview stream is refreshed once during initial playback; extraction failures and autoplay permission errors are not retried. The WebView downloads and decodes the preview; reducing bundled FFmpeg codecs does not reduce WebView playback requirements.
 
 Implementation: `preview_with_ytdlp`, `parse_preview_url`, and `preview_song` in [lib.rs](../src-tauri/src/lib.rs), [music.service.ts](../src/lib/services/music.service.ts), and [Player.svelte](../src/lib/components/Player.svelte).
 

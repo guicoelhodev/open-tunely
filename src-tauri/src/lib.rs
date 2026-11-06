@@ -483,6 +483,7 @@ fn preview_with_ytdlp(binary: PathBuf, deno: PathBuf, id: &str, cancelled: &Atom
             "--no-playlist",
             "--skip-download",
             "--get-url",
+            "--check-formats",
             "--format",
             "bestaudio[ext=m4a][protocol=https]/bestaudio[protocol=https]",
             "--socket-timeout",
