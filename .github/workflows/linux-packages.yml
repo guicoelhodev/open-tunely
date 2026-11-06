@@ -142,13 +142,14 @@ jobs:
           path: dist/*-setup.exe
 
   release:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
     needs: [linux, windows]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.sha }}
       - uses: actions/download-artifact@v7
         with:
           pattern: open-tunely-*
@@ -158,5 +159,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          COMMIT: ${{ github.sha }}
+          COMMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.sha }}
         run: bash scripts/publish-release.sh dist
