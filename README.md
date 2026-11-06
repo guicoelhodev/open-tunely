@@ -18,7 +18,7 @@ A desktop music downloader and player built with Tauri, Svelte, and Rust.
 
 </div>
 
-> **Early development:** Linux x64 is the current validated platform. Distribution targets are Windows and Linux (`.deb` and `.AppImage`); Windows support and AppImage packaging are still being validated.
+> **Early development:** Linux x64 is the current validated platform. Distribution targets are Linux AppImage and Windows x64 NSIS installers; desktop behavior must be validated on each platform. Debian packaging is deferred.
 
 ## Features
 
@@ -33,7 +33,7 @@ A desktop music downloader and player built with Tauri, Svelte, and Rust.
 
 ### Requirements
 
-- Linux x64
+- Linux x64, or Windows x64 with MSVC and WebView2 prerequisites
 - Node.js and npm
 - The Rust toolchain and [Tauri's Linux prerequisites](https://v2.tauri.app/start/prerequisites/)
 - Internet access, Bash, `curl`, `tar` with Gzip/XZ support, `unzip`, `sha256sum`, GCC, make, pkg-config, and NASM for media tool setup; `patchelf` for AppImage packaging
@@ -86,27 +86,25 @@ See [the project context](docs/context.md) for more architectural details.
 | `cargo test --manifest-path src-tauri/Cargo.toml` | Run backend tests |
 | `cargo fmt --manifest-path src-tauri/Cargo.toml --check` | Check Rust formatting |
 
-To build the Linux packages after preparing the media tools:
+### Desktop packages
 
-```sh
-npm run tauri build
-```
+Run the **Desktop packages** workflow manually from GitHub Actions using **Run workflow**. It builds Linux x64 AppImage and Windows x64 NSIS (`-setup.exe`) packages. There are no push or tag triggers, and no Debian package is generated.
 
-The Linux configuration generates only `.deb` and `.AppImage` packages under `src-tauri/target/release/bundle/`. To generate only the AppImage, run `npm run tauri build -- --bundles appimage`. The AppImage includes GStreamer for audio playback and is larger than the Debian package.
+Download `open-tunely-linux-x64` or `open-tunely-windows-x64` from the completed run's artifacts. Enable **Create a draft prerelease with both packages** to also create a draft GitHub prerelease with both installers and SHA-256 checksums. A unique test tag identifies the exact workflow commit; creating it does not trigger another build. Draft releases remain unpublished until reviewed.
 
-For distribution builds, use Ubuntu 22.04 with Tauri's native prerequisites, `patchelf`, and the GStreamer base, good, bad, and libav plugin packages. The `Linux packages` GitHub Actions workflow prepares this environment, builds both formats, checks the AppImage payload, and uploads downloadable workflow artifacts. Run it manually from Actions or with a `v*` tag; it does not publish a release.
+The Linux runner uses Ubuntu 22.04 with Tauri and GStreamer dependencies. It builds the AppImage, applies `scripts/fix-appimage-runtime.sh`, repacks it, and runs `scripts/check-appimage.sh`. Locally, use `npm run tauri build -- --bundles appimage` after preparing tools. For runtime fixes, apply the same postprocessing steps as the workflow. Make AppImages executable before opening; use `--appimage-extract-and-run` when FUSE is unavailable.
 
-Validate a generated AppImage with `bash scripts/check-appimage.sh path/to/app.AppImage`. To launch it, make it executable with `chmod +x path/to/app.AppImage` and run it. On systems without FUSE, use `path/to/app.AppImage --appimage-extract-and-run`. Payload checks do not replace desktop tests of playback, downloads, and folder selection on the supported distributions.
+The Windows runner uses the MSVC Rust toolchain and MSYS2 UCRT64 to compile the same minimal FFmpeg/ffprobe feature set. It then downloads checksum-verified Windows yt-dlp and Deno binaries, checks offline MP3 conversion, and builds an NSIS installer. For Windows development, compile FFmpeg first with `bash scripts/build-ffmpeg.sh` inside MSYS2 UCRT64, then run `npm run setup:tools` from Windows Node.js. Setup expects `ffmpeg.exe`, `ffprobe.exe`, and their license file in `src-tauri/binaries/`.
 
-The FFmpeg build supports AAC, Opus, Vorbis, MP3, FLAC, and basic PCM inputs, with MP3 output. yt-dlp handles network downloads. Set `JOBS` to control compilation parallelism or `FFMPEG_OUTPUT` to choose a separate output directory. The output includes build configuration and license texts. Build Linux releases on the oldest supported distribution to avoid requiring a newer glibc.
+Windows installers are unsigned. WebView2 is downloaded during installation if needed, so installation can require internet access. Test search, preview, MP3 download, folder selection, local playback, seeking, renaming, and deletion on Windows before publishing a release. CI conversion checks do not establish desktop playback compatibility.
 
-The FFmpeg script also includes an MSYS2 MINGW64 build path for Windows. This does not yet provide a working Windows app setup: `npm run setup:tools` currently supports Linux x64 only.
+The FFmpeg build supports AAC, Opus, Vorbis, MP3, FLAC, and basic PCM inputs with MP3 output. yt-dlp handles network downloads. Set `JOBS` to control compilation parallelism or `FFMPEG_OUTPUT` to select an output directory. Build configuration and license texts accompany the tools. Keep Linux releases on the oldest supported build distribution to avoid raising glibc requirements.
 
 Frontend services live in `src/lib/services/`, UI components in `src/lib/components/`, translations in `src/languages/`, and backend code in `src-tauri/src/`.
 
 ## Current limitations
 
-- Windows setup, playback, and packaging have not been validated. The AppImage has been built and opened locally on Arch Linux; cross-distribution playback and the Ubuntu workflow still need validation. Public releases are pending.
+- Windows desktop behavior and cross-distribution Linux playback require manual validation. CI produces test artifacts; successful packaging does not replace desktop testing.
 - YouTube extraction depends on yt-dlp compatibility and video availability.
 - Playback depends on the platform WebView and available codecs.
 - Duplicate detection uses the destination filename, not a persistent video ID index.

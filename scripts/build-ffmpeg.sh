@@ -5,6 +5,8 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 prefix="$work/install"
+link_flags=""
+case "$(uname -s)" in MINGW*|MSYS*) link_flags="-static" ;; esac
 fetch() {
   curl --fail --location --retry 3 "$1" -o "$work/$2"
   echo "$3  $work/$2" | sha256sum --check -
@@ -29,7 +31,7 @@ PKG_CONFIG_PATH="$prefix/lib/pkgconfig" ./configure \
   --enable-demuxer=mov,matroska,ogg,mp3,aac,flac,wav \
   --enable-muxer=mp3,mp4,ipod --enable-bsf=aac_adtstoasc --enable-protocol=file,pipe \
   --enable-filter=aresample,aformat,anull --enable-parser=aac,opus,vorbis,mpegaudio,flac \
-  --extra-cflags="-I$prefix/include" --extra-ldflags="-L$prefix/lib"
+  --extra-cflags="-I$prefix/include" --extra-ldflags="-L$prefix/lib $link_flags"
 make -j"${JOBS:-4}" ffmpeg ffprobe
 suffix=""
 case "$(uname -s)" in MINGW*|MSYS*) suffix=.exe ;; esac

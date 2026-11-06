@@ -1,11 +1,21 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "bundle": {
-    "targets": ["deb", "appimage"],
+    "targets": [
+      "appimage"
+    ],
     "linux": {
       "appimage": {
         "bundleMediaFramework": true
       }
-    }
+    },
+    "resources": [
+      "binaries/yt-dlp",
+      "binaries/deno",
+      "binaries/deno-LICENSE.md",
+      "binaries/ffmpeg",
+      "binaries/ffprobe",
+      "binaries/ffmpeg-LICENSE.txt"
+    ]
   }
 }
