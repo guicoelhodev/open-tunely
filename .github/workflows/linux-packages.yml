@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       draft_release:
-        description: Create a draft prerelease with both packages
+        description: Create a draft prerelease (default branch only)
         type: boolean
         default: false
 
@@ -108,7 +108,7 @@ jobs:
           path: dist/*-setup.exe
 
   release:
-    if: ${{ inputs.draft_release }}
+    if: ${{ inputs.draft_release && github.ref_name == github.event.repository.default_branch }}
     needs: [linux, windows]
     runs-on: ubuntu-22.04
     permissions:
